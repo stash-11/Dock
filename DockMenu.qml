@@ -35,7 +35,7 @@ PanelWindow {
     x: Math.round((root.width - width) / 2)
     y: Math.round((root.height - height) / 2)
     width: 650
-    height: 500
+    height: 540
     radius: 22
     color: Util.alpha(Color.background, 0.97)
     border.color: Util.alpha(Color.foreground, 0.14)
@@ -207,6 +207,16 @@ PanelWindow {
       Column {
         width: parent.width
         spacing: 8
+        Text {
+          text: "Appearance"
+          color: Color.foreground
+          font.family: Style.font.family
+          font.pixelSize: Style.font.heading
+          font.bold: true
+          height: 28
+          verticalAlignment: Text.AlignVCenter
+        }
+        Rectangle { width: parent.width; height: 1; color: Util.alpha(Color.foreground, 0.08) }
         AppearanceControl {
           width: parent.width
           label: "Magnification"
@@ -266,19 +276,42 @@ PanelWindow {
         x: slider.leftPadding
         y: slider.topPadding + slider.availableHeight / 2 - height / 2
         width: slider.availableWidth
-        implicitHeight: 4
-        height: 4; radius: 2
-        color: Util.alpha(Color.foreground, 0.15)
-        Rectangle { width: slider.visualPosition * parent.width; height: parent.height; radius: 2; color: Color.accent }
+        implicitHeight: 5
+        height: 5; radius: 2.5
+        color: Util.alpha(Color.foreground, 0.18)
+        Rectangle {
+          width: slider.handle.width / 2 + slider.visualPosition * (parent.width - slider.handle.width)
+          height: parent.height
+          radius: parent.radius
+          color: Color.accent
+        }
       }
       handle: Rectangle {
         x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
         y: slider.topPadding + slider.availableHeight / 2 - height / 2
-        implicitWidth: 18; implicitHeight: 18
-        width: 18; height: 18; radius: 9
-        color: slider.pressed ? Color.accent : Color.foreground
-        border.color: Color.accent
-        border.width: slider.activeFocus ? 2 : 1
+        implicitWidth: 20; implicitHeight: 20
+        width: 20; height: 20; radius: 10
+        color: slider.pressed ? "#eeeeee" : "#ffffff"
+        border.color: "#26000000"
+        border.width: 1
+        Behavior on color { ColorAnimation { duration: 90 } }
+        Rectangle {
+          anchors.fill: parent
+          anchors.margins: -1
+          anchors.verticalCenterOffset: 1
+          radius: 11
+          color: "#18000000"
+          z: -1
+        }
+        Rectangle {
+          anchors.fill: parent
+          anchors.margins: -4
+          radius: 14
+          color: "transparent"
+          border.color: Util.alpha(Color.accent, 0.5)
+          border.width: 2
+          visible: slider.activeFocus
+        }
       }
     }
     Text {
