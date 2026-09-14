@@ -105,6 +105,17 @@ Item {
     root.bounceOffset = 0
   }
 
+  Rectangle {
+    anchors.horizontalCenter: parent.horizontalCenter
+    y: -3
+    width: root.iconSize + 6
+    height: root.iconSize + 6
+    radius: 16
+    color: Util.alpha(Color.accent, root.leftPressed ? 0.20 : 0.10)
+    opacity: root.tooltipVisible || root.leftPressed ? 1 : 0
+    Behavior on opacity { NumberAnimation { duration: 140 } }
+  }
+
   Image {
     id: icon
     anchors.horizontalCenter: parent.horizontalCenter
@@ -133,10 +144,11 @@ Item {
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.top: icon.bottom
     anchors.topMargin: 2
-    width: 4 / root.scale
-    height: 4 / root.scale
-    radius: width / 2
-    color: Util.alpha(Color.foreground, 0.85)
+    width: (root.tooltipVisible ? 12 : 7) / root.scale
+    height: 3 / root.scale
+    radius: height / 2
+    color: Color.accent
+    Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
     visible: !!root.itemData.running
   }
 

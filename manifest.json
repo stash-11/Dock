@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "macos.dock",
-  "name": "My Dock \u00b7 Glass",
+  "name": "My Dock \u00b7 Capsule",
   "version": "0.1.19",
   "author": "ifubaraboye",
-  "description": "macOS-inspired theme-matched opaque dock with wide magnification, spring motion and launch bounce; preserves the reference dock features.",
+  "description": "Opaque theme-matched capsule dock with accent hover tiles, animated running indicators and fixed-width magnification.",
   "kinds": [
     "panel"
   ],

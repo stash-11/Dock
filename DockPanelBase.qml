@@ -1647,11 +1647,22 @@ Item {
       y: root.surfaceY
       width: root.surfaceWidth
       height: root.surfaceHeight
-      radius: 26
+      radius: Math.min(width, height) / 2
       color: Color.background
-      border.color: Util.alpha(Color.foreground, 0.14)
+      border.color: Util.alpha(Color.accent, root.dockHovered ? 0.55 : 0.24)
       border.width: 1
       opacity: root.enabled ? 1 : 0
+      Behavior on border.color { ColorAnimation { duration: 180 } }
+
+      // Solid capsule with a quiet inset edge, using the current theme.
+      Rectangle {
+        anchors.fill: parent
+        anchors.margins: 3
+        radius: Math.max(0, parent.radius - 3)
+        color: "transparent"
+        border.width: 1
+        border.color: Util.alpha(Color.foreground, 0.05)
+      }
 
       Behavior on x {
         NumberAnimation { duration: root.autoHidden ? root.hideDuration : root.showDuration; easing.type: Easing.OutCubic }

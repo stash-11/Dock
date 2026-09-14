@@ -1,3 +1,12 @@
+# Capsule style experiment
+
+Branch: `feature/new-style`. Restore point: Git tag `stable`.
+
+This style uses a fully rounded opaque capsule, theme-accent borders,
+soft accent tiles behind hovered icons and animated running indicators.
+The dock background keeps its resting width during magnification.
+Window previews remain disabled.
+
 # My Dock
 
 A macOS-inspired opaque restyle of the reference Omarchy dock. All application,
