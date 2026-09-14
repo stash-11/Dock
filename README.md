@@ -49,3 +49,5 @@ See `README.reference.md` for inherited feature documentation and commands.
 The original license and attribution are preserved in `LICENSE` and the manifest.
 
 Hover shows application names only; window thumbnail previews are disabled.
+
+Right-click an icon: below **Dock Options**, adjust **Magnification** (Off–2.5×) and **Rounded corners** (0–100%). Changes save to `~/.config/omarchy/dock-settings.json`.

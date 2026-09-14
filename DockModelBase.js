@@ -369,17 +369,22 @@ function normalizeSide(side) {
     return "bottom"
 }
 
+function boundedSetting(value, fallback, low, high) {
+    return typeof value === "number" && isFinite(value)
+      ? Math.max(low, Math.min(high, value)) : fallback
+}
+
 function parseSettings(text, fallback) {
     var defaults = fallback || { autoHide: true, dockSide: "bottom" }
     var baseSide = normalizeSide(defaults.dockSide)
-    var base = { autoHide: !!defaults.autoHide, dockSide: baseSide }
+    var base = { autoHide: !!defaults.autoHide, dockSide: baseSide, magnification: boundedSetting(defaults.magnification, 1.85, 1, 2.5), roundness: boundedSetting(defaults.roundness, 1, 0, 1) }
     var source = String(text || "").trim()
     if (!source) return base
     try {
         var parsed = JSON.parse(source)
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
             return base
-        var out = { autoHide: base.autoHide, dockSide: base.dockSide }
+        var out = { autoHide: base.autoHide, dockSide: base.dockSide, magnification: boundedSetting(parsed.magnification, base.magnification, 1, 2.5), roundness: boundedSetting(parsed.roundness, base.roundness, 0, 1) }
         if (typeof parsed.autoHide === "boolean") out.autoHide = parsed.autoHide
         else if (typeof parsed.autoHide === "string") out.autoHide = parsed.autoHide === "true"
         if (parsed.dockSide !== undefined) out.dockSide = normalizeSide(parsed.dockSide)
@@ -392,7 +397,7 @@ function parseSettings(text, fallback) {
 function serializeSettings(settings) {
     var value = settings && typeof settings.autoHide === "boolean" ? settings.autoHide : true
     var side = normalizeSide(settings && settings.dockSide)
-    return JSON.stringify({ version: 1, autoHide: value, dockSide: side }, null, 2) + "\n"
+    return JSON.stringify({ version: 1, autoHide: value, dockSide: side, magnification: boundedSetting(settings && settings.magnification, 1.85, 1, 2.5), roundness: boundedSetting(settings && settings.roundness, 1, 0, 1) }, null, 2) + "\n"
 }
 
 function shouldReprocessSettings(content) {

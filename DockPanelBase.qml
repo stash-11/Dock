@@ -27,6 +27,17 @@ Item {
   // reload() path re-reads fresh, and this window skips watcher events that
   // belong to our own save cycles entirely.
   property double ownWriteUntil: 0
+  property real magnification: 1.85
+  property real roundness: 1
+  property bool applyingSettings: false
+  property var layoutOptions: {
+    var options = Object.assign({}, DockModel.LAYOUT_OPTS)
+    options.hoverScale = root.magnification
+    return options
+  }
+  onMagnificationChanged: { root.applyLayout(); if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart() }
+  onRoundnessChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
+  Timer { id: appearanceSave; interval: 200; onTriggered: root.saveSettings() }
   property bool settingsLoaded: false
   property double settingsWriteUntil: 0
   property var appEntries: []
@@ -229,7 +240,8 @@ Item {
   }
 
   function saveSettings() {
-    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide })
+    if (root.applyingSettings) return
+    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness })
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
     // settingsFile uses atomicWrites: setText writes to a sibling temp and
@@ -604,7 +616,7 @@ Item {
     var cursorX = root.cursorXInRow()
     var baseFlow = DockModel.buildFlow(root.dockOrder, [], root.floatingId, -1)
     if (root.floatingId && cursorX >= 0)
-      root.tempDrag.index = DockModel.insertionIndexFor(cursorX, baseFlow, DockModel.LAYOUT_OPTS)
+      root.tempDrag.index = DockModel.insertionIndexFor(cursorX, baseFlow, root.layoutOptions)
     var mainFlow = DockModel.buildFlow(
       root.dockOrder,
       [],
@@ -612,7 +624,7 @@ Item {
       root.floatingId ? root.tempDrag.index : -1
     )
     var fullFlow = mainFlow.slice()
-    var result = DockModel.computeLayout(fullFlow, cursorX, DockModel.LAYOUT_OPTS)
+    var result = DockModel.computeLayout(fullFlow, cursorX, root.layoutOptions)
     root.placements = result.placements
     root.layoutWidth = result.totalWidth
     for (var id in result.placements) {
@@ -1436,7 +1448,11 @@ Item {
         if (!DockModel.shouldReprocessSettings(text())) return
         root.autoHide = parsed.autoHide
       }
+      root.applyingSettings = true
+      root.magnification = parsed.magnification
+      root.roundness = parsed.roundness
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
+      root.applyingSettings = false
       // If auto-hide is turned off, ensure the dock is fully revealed.
       if (!root.autoHide) root.autoHidden = false
     }
@@ -1647,7 +1663,7 @@ Item {
       y: root.surfaceY
       width: root.surfaceWidth
       height: root.surfaceHeight
-      radius: Math.min(width, height) / 2
+      radius: Math.min(width, height) / 2 * root.roundness
       color: Color.background
       border.color: Util.alpha(Color.accent, root.dockHovered ? 0.55 : 0.24)
       border.width: 1
@@ -1891,6 +1907,10 @@ Item {
   DockMenu {
     id: dockMenu
     autoHideEnabled: root.autoHide
+    magnification: root.magnification
+    roundness: root.roundness
+    onMagnificationAdjusted: function(value) { root.magnification = value }
+    onRoundnessAdjusted: function(value) { root.roundness = value }
     dockSide: root.dockSide
     iconSource: root.iconSourceFor(dockMenu.itemData ? dockMenu.itemData.id : "")
     onActionTriggered: function(actionName, selectedItem) { root.menuAction(actionName, selectedItem) }

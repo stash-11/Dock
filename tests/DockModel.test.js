@@ -357,3 +357,25 @@ test("pointer sweep keeps surface fixed and magnified icons separated and center
     }
   }
 })
+
+
+test("appearance settings persist, migrate old files and reject invalid values", () => {
+  const saved = model.serializeSettings({autoHide: false, dockSide: "left", magnification: 2.3, roundness: 0.35})
+  const restored = model.parseSettings(saved)
+  assert.equal(restored.magnification, 2.3)
+  assert.equal(restored.roundness, 0.35)
+  assert.equal(restored.autoHide, false)
+  assert.equal(restored.dockSide, "left")
+  assert.equal(model.parseSettings('{"autoHide":true}').magnification, 1.85)
+  assert.equal(model.parseSettings('{}').roundness, 1)
+  assert.equal(model.parseSettings('{"magnification":999,"roundness":-1}').magnification, 2.5)
+  assert.equal(model.parseSettings('{"magnification":999,"roundness":-1}').roundness, 0)
+  assert.equal(model.parseSettings('{"magnification":null,"roundness":"bad"}').magnification, 1.85)
+  const flow = [{id: "a"}, {id: "b"}]
+  const rest = model.computeLayout(flow, -1)
+  for (const scale of [1, 1.85, 2.5]) {
+    const layout = model.computeLayout(flow, 30, {...model.LAYOUT_OPTS, hoverScale: scale})
+    assert.equal(layout.totalWidth, rest.totalWidth)
+    assert.equal(layout.placements.a.scale, scale)
+  }
+})

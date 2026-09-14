@@ -1,5 +1,6 @@
 import "."
 import QtQuick
+import QtQuick.Controls as Controls
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
@@ -14,6 +15,10 @@ PanelWindow {
   property point requestedPosition: Qt.point(0, 0)
   property bool autoHideEnabled: true
   property string dockSide: "bottom"
+  property real magnification: 1.85
+  property real roundness: 1
+  signal magnificationAdjusted(real value)
+  signal roundnessAdjusted(real value)
 
   signal actionTriggered(string action, var itemData)
 
@@ -30,7 +35,7 @@ PanelWindow {
     x: Math.round((root.width - width) / 2)
     y: Math.round((root.height - height) / 2)
     width: 650
-    height: 370
+    height: 500
     radius: 22
     color: Util.alpha(Color.background, 0.97)
     border.color: Util.alpha(Color.foreground, 0.14)
@@ -179,7 +184,7 @@ PanelWindow {
         spacing: 8
 
         Text {
-          text: "Dock"
+          text: "Dock Options"
           anchors.verticalCenter: parent.verticalCenter
           color: Util.alpha(Color.foreground, 0.52)
           font.family: Style.font.family
@@ -198,6 +203,86 @@ PanelWindow {
         Item { width: 1; height: 1 }
 
       }
+
+      Column {
+        width: parent.width
+        spacing: 8
+        AppearanceControl {
+          width: parent.width
+          label: "Magnification"
+          valueText: root.magnification <= 1 ? "Off" : root.magnification.toFixed(2) + "×"
+          from: 1; to: 2.5; stepSize: 0.05
+          value: root.magnification
+          onAdjusted: function(value) { root.magnificationAdjusted(value) }
+        }
+        AppearanceControl {
+          width: parent.width
+          label: "Rounded corners"
+          valueText: Math.round(root.roundness * 100) + "%"
+          from: 0; to: 1; stepSize: 0.05
+          value: root.roundness
+          onAdjusted: function(value) { root.roundnessAdjusted(value) }
+        }
+      }
+    }
+  }
+
+  component AppearanceControl: Item {
+    id: control
+    property string label
+    property string valueText
+    property real from
+    property real to
+    property real stepSize
+    property real value
+    signal adjusted(real value)
+    height: 44
+    Text {
+      anchors.left: parent.left
+      anchors.verticalCenter: parent.verticalCenter
+      text: control.label
+      color: Color.foreground
+      font.family: Style.font.family
+      font.pixelSize: Style.font.bodySmall
+    }
+    Controls.Slider {
+      id: slider
+      anchors.left: parent.left
+      anchors.leftMargin: 160
+      anchors.right: valueLabel.left
+      anchors.rightMargin: 16
+      anchors.verticalCenter: parent.verticalCenter
+      from: control.from; to: control.to; stepSize: control.stepSize
+      value: control.value
+      onMoved: control.adjusted(value)
+      Accessible.name: control.label
+      background: Rectangle {
+        x: slider.leftPadding
+        y: slider.topPadding + slider.availableHeight / 2 - height / 2
+        width: slider.availableWidth
+        height: 4; radius: 2
+        color: Util.alpha(Color.foreground, 0.15)
+        Rectangle { width: slider.visualPosition * parent.width; height: parent.height; radius: 2; color: Color.accent }
+      }
+      handle: Rectangle {
+        x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
+        y: slider.topPadding + slider.availableHeight / 2 - height / 2
+        width: 18; height: 18; radius: 9
+        color: slider.pressed ? Color.accent : Color.foreground
+        border.color: Color.accent
+        border.width: slider.activeFocus ? 2 : 1
+      }
+    }
+    Text {
+      id: valueLabel
+      width: 52
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      horizontalAlignment: Text.AlignRight
+      text: control.valueText
+      color: Color.accent
+      font.family: Style.font.family
+      font.pixelSize: Style.font.bodySmall
     }
   }
 
