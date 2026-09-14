@@ -12,6 +12,8 @@ PanelWindow {
   property var itemData: null
   property string iconSource: ""
   property bool opened: false
+  property bool settingsPage: false
+  onOpenedChanged: if (!opened) settingsPage = false
   property point requestedPosition: Qt.point(0, 0)
   property bool autoHideEnabled: true
   property string dockSide: "bottom"
@@ -35,7 +37,7 @@ PanelWindow {
     x: Math.round((root.width - width) / 2)
     y: Math.round((root.height - height) / 2)
     width: 650
-    height: 540
+    height: root.settingsPage ? 340 : 290
     radius: 22
     color: Util.alpha(Color.background, 0.97)
     border.color: Util.alpha(Color.foreground, 0.14)
@@ -65,11 +67,11 @@ PanelWindow {
             source: root.iconSource
             sourceSize: Qt.size(96, 96)
             fillMode: Image.PreserveAspectFit
-            visible: status === Image.Ready
+            visible: !root.settingsPage && status === Image.Ready
           }
           Text {
             anchors.centerIn: parent
-            text: root.itemData && root.itemData.name ? String(root.itemData.name).charAt(0).toUpperCase() : "•"
+            text: root.settingsPage ? "⚙" : (root.itemData && root.itemData.name ? String(root.itemData.name).charAt(0).toUpperCase() : "•")
             color: Color.foreground
             font.family: Style.font.family
             font.pixelSize: 24
@@ -84,17 +86,40 @@ PanelWindow {
           anchors.verticalCenter: parent.verticalCenter
           spacing: 3
           Text {
-            text: root.itemData && root.itemData.name ? root.itemData.name : "Application"
+            text: root.settingsPage ? "Dock Settings" : (root.itemData && root.itemData.name ? root.itemData.name : "Application")
             color: Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.title
             font.bold: true
           }
           Text {
-            text: root.itemData && root.itemData.running ? "Running application" : "Pinned application"
+            text: root.settingsPage ? "Position, hiding and appearance" : (root.itemData && root.itemData.running ? "Running application" : "Pinned application")
             color: Util.alpha(Color.foreground, 0.52)
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
+          }
+        }
+
+        Rectangle {
+          width: 32; height: 32; radius: 16
+          anchors.right: parent.right
+          anchors.rightMargin: 42
+          anchors.verticalCenter: parent.verticalCenter
+          color: settingsMouse.containsMouse ? Util.alpha(Color.foreground, 0.12) : "transparent"
+          Accessible.role: Accessible.Button
+          Accessible.name: root.settingsPage ? "Back to application actions" : "Dock settings"
+          Text {
+            anchors.centerIn: parent
+            text: root.settingsPage ? "←" : "⚙"
+            color: Color.foreground
+            font.pixelSize: 22
+          }
+          MouseArea {
+            id: settingsMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.settingsPage = !root.settingsPage
           }
         }
 
@@ -113,6 +138,7 @@ PanelWindow {
       Rectangle { width: parent.width; height: 1; color: Util.alpha(Color.foreground, 0.10) }
 
       Text {
+        visible: !root.settingsPage
         text: "Application actions"
         color: Color.foreground
         font.family: Style.font.family
@@ -121,6 +147,7 @@ PanelWindow {
       }
 
       Row {
+        visible: !root.settingsPage
         width: parent.width
         height: 112
         spacing: 10
@@ -179,6 +206,7 @@ PanelWindow {
       }
 
       Row {
+        visible: root.settingsPage
         width: parent.width
         height: 38
         spacing: 8
@@ -205,6 +233,7 @@ PanelWindow {
       }
 
       Column {
+        visible: root.settingsPage
         width: parent.width
         spacing: 8
         Text {
