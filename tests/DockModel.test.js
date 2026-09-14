@@ -379,3 +379,16 @@ test("appearance settings persist, migrate old files and reject invalid values",
     assert.equal(layout.placements.a.scale, scale)
   }
 })
+
+
+test("theme choice persists and existing settings default to theme", () => {
+  assert.equal(model.parseSettings('{}').appearanceMode, "theme")
+  assert.equal(model.parseSettings('{"appearanceMode":"invalid"}').appearanceMode, "theme")
+  for (const appearanceMode of ["theme", "default"]) {
+    const saved = model.serializeSettings({autoHide: false, appearanceMode, magnification: 2.1, roundness: 0.5})
+    const restored = model.parseSettings(saved)
+    assert.equal(restored.appearanceMode, appearanceMode)
+    assert.equal(restored.magnification, 2.1)
+    assert.equal(restored.roundness, 0.5)
+  }
+})

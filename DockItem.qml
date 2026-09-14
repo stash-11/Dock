@@ -7,6 +7,8 @@ import "IconResolver.js" as IconResolver
 Item {
   id: root
 
+  property color accentColor: Color.accent
+  property color foregroundColor: Color.foreground
   required property var itemData
   property int iconSize: 52
   property string dockSide: "bottom"
@@ -111,7 +113,7 @@ Item {
     width: root.iconSize + 6
     height: root.iconSize + 6
     radius: 16
-    color: Util.alpha(Color.accent, root.leftPressed ? 0.20 : 0.10)
+    color: Util.alpha(root.accentColor, root.leftPressed ? 0.20 : 0.10)
     opacity: root.tooltipVisible || root.leftPressed ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: 140 } }
   }
@@ -135,7 +137,7 @@ Item {
       anchors.centerIn: parent
       visible: parent.status !== Image.Ready
       text: "◆"
-      color: Color.foreground
+      color: root.foregroundColor
       font.pixelSize: root.iconSize * 0.42
     }
   }
@@ -147,7 +149,7 @@ Item {
     width: (root.tooltipVisible ? 12 : 7) / root.scale
     height: 3 / root.scale
     radius: height / 2
-    color: Color.accent
+    color: root.accentColor
     Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
     visible: !!root.itemData.running
   }

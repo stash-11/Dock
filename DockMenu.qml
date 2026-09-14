@@ -19,6 +19,11 @@ PanelWindow {
   property string dockSide: "bottom"
   property real magnification: 1.85
   property real roundness: 1
+  property string appearanceMode: "theme"
+  readonly property color paletteBackground: appearanceMode === "theme" ? Color.background : "#242426"
+  readonly property color paletteForeground: appearanceMode === "theme" ? Color.foreground : "#f5f5f7"
+  readonly property color paletteAccent: appearanceMode === "theme" ? Color.accent : "#0a84ff"
+  signal appearanceModeAdjusted(string value)
   signal magnificationAdjusted(real value)
   signal roundnessAdjusted(real value)
 
@@ -37,10 +42,10 @@ PanelWindow {
     x: Math.round((root.width - width) / 2)
     y: Math.round((root.height - height) / 2)
     width: 650
-    height: root.settingsPage ? 340 : 290
+    height: root.settingsPage ? 390 : 290
     radius: 22
-    color: Util.alpha(Color.background, 0.97)
-    border.color: Util.alpha(Color.foreground, 0.14)
+    color: Util.alpha(root.paletteBackground, 0.97)
+    border.color: Util.alpha(root.paletteForeground, 0.14)
     border.width: 1
 
     Column {
@@ -57,7 +62,7 @@ PanelWindow {
           height: 58
           radius: 16
           anchors.left: parent.left
-          color: Util.alpha(Color.foreground, 0.08)
+          color: Util.alpha(root.paletteForeground, 0.08)
 
           Image {
             id: appIcon
@@ -79,7 +84,7 @@ PanelWindow {
           Text {
             anchors.centerIn: parent
             text: root.itemData && root.itemData.name ? String(root.itemData.name).charAt(0).toUpperCase() : "•"
-            color: Color.foreground
+            color: root.paletteForeground
             font.family: Style.font.family
             font.pixelSize: 24
             font.bold: true
@@ -94,14 +99,14 @@ PanelWindow {
           spacing: 3
           Text {
             text: root.settingsPage ? "Dock Settings" : (root.itemData && root.itemData.name ? root.itemData.name : "Application")
-            color: Color.foreground
+            color: root.paletteForeground
             font.family: Style.font.family
             font.pixelSize: Style.font.title
             font.bold: true
           }
           Text {
             text: root.settingsPage ? "Position, hiding and appearance" : (root.itemData && root.itemData.running ? "Running application" : "Pinned application")
-            color: Util.alpha(Color.foreground, 0.52)
+            color: Util.alpha(root.paletteForeground, 0.52)
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
           }
@@ -112,7 +117,7 @@ PanelWindow {
           anchors.right: parent.right
           anchors.rightMargin: 42
           anchors.verticalCenter: parent.verticalCenter
-          color: settingsMouse.containsMouse ? Util.alpha(Color.foreground, 0.12) : "transparent"
+          color: settingsMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.12) : "transparent"
           Accessible.role: Accessible.Button
           Accessible.name: root.settingsPage ? "Back to application actions" : "Dock settings"
           Image {
@@ -137,7 +142,7 @@ PanelWindow {
           anchors.right: parent.right
           radius: 16
           anchors.verticalCenter: parent.verticalCenter
-          color: closeMouse.containsMouse ? Util.alpha(Color.foreground, 0.12) : "transparent"
+          color: closeMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.12) : "transparent"
           Accessible.role: Accessible.Button
           Accessible.name: "Close"
           Image {
@@ -151,12 +156,12 @@ PanelWindow {
         }
       }
 
-      Rectangle { width: parent.width; height: 1; color: Util.alpha(Color.foreground, 0.10) }
+      Rectangle { width: parent.width; height: 1; color: Util.alpha(root.paletteForeground, 0.10) }
 
       Text {
         visible: !root.settingsPage
         text: "Application actions"
-        color: Color.foreground
+        color: root.paletteForeground
         font.family: Style.font.family
         font.pixelSize: Style.font.heading
         font.bold: true
@@ -180,8 +185,8 @@ PanelWindow {
             width: (parent.width - 30) / 4
             height: parent.height
             radius: 14
-            color: actionMouse.containsMouse ? Util.alpha(Color.accent, 0.16) : Util.alpha(Color.foreground, 0.065)
-            border.color: actionMouse.containsMouse ? Util.alpha(Color.accent, 0.55) : "transparent"
+            color: actionMouse.containsMouse ? Util.alpha(root.paletteAccent, 0.16) : Util.alpha(root.paletteForeground, 0.065)
+            border.color: actionMouse.containsMouse ? Util.alpha(root.paletteAccent, 0.55) : "transparent"
             border.width: 1
 
             Column {
@@ -190,20 +195,20 @@ PanelWindow {
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: modelData.glyph
-                color: actionMouse.containsMouse ? Color.accent : Color.foreground
+                color: actionMouse.containsMouse ? root.paletteAccent : root.paletteForeground
                 font.pixelSize: 24
               }
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: modelData.label
-                color: Color.foreground
+                color: root.paletteForeground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body
               }
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: modelData.detail
-                color: Util.alpha(Color.foreground, 0.45)
+                color: Util.alpha(root.paletteForeground, 0.45)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
               }
@@ -230,7 +235,7 @@ PanelWindow {
         Text {
           text: "Dock Options"
           anchors.verticalCenter: parent.verticalCenter
-          color: Util.alpha(Color.foreground, 0.52)
+          color: Util.alpha(root.paletteForeground, 0.52)
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
         }
@@ -254,14 +259,29 @@ PanelWindow {
         spacing: 8
         Text {
           text: "Appearance"
-          color: Color.foreground
+          color: root.paletteForeground
           font.family: Style.font.family
           font.pixelSize: Style.font.heading
           font.bold: true
           height: 28
           verticalAlignment: Text.AlignVCenter
         }
-        Rectangle { width: parent.width; height: 1; color: Util.alpha(Color.foreground, 0.08) }
+        Rectangle { width: parent.width; height: 1; color: Util.alpha(root.paletteForeground, 0.08) }
+        Row {
+          width: parent.width
+          height: 38
+          spacing: 8
+          Text {
+            width: 152
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Colors"
+            color: root.paletteForeground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.bodySmall
+          }
+          UtilityButton { label: "Theme"; action: "appearanceTheme"; selected: root.appearanceMode === "theme"; width: 104 }
+          UtilityButton { label: "Default"; action: "appearanceDefault"; selected: root.appearanceMode === "default"; width: 104 }
+        }
         AppearanceControl {
           width: parent.width
           label: "Magnification"
@@ -296,7 +316,7 @@ PanelWindow {
       anchors.left: parent.left
       anchors.verticalCenter: parent.verticalCenter
       text: control.label
-      color: Color.foreground
+      color: root.paletteForeground
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall
     }
@@ -326,12 +346,12 @@ PanelWindow {
         width: slider.availableWidth
         implicitHeight: 5
         height: 5; radius: 2.5
-        color: Util.alpha(Color.foreground, 0.18)
+        color: Util.alpha(root.paletteForeground, 0.18)
         Rectangle {
           width: slider.handle.width / 2 + slider.visualPosition * (parent.width - slider.handle.width)
           height: parent.height
           radius: parent.radius
-          color: Color.accent
+          color: root.paletteAccent
         }
       }
       handle: Rectangle {
@@ -356,7 +376,7 @@ PanelWindow {
           anchors.margins: -4
           radius: 14
           color: "transparent"
-          border.color: Util.alpha(Color.accent, 0.5)
+          border.color: Util.alpha(root.paletteAccent, 0.5)
           border.width: 2
           visible: slider.activeFocus
         }
@@ -369,7 +389,7 @@ PanelWindow {
       anchors.verticalCenter: parent.verticalCenter
       horizontalAlignment: Text.AlignRight
       text: control.valueText
-      color: Color.accent
+      color: root.paletteAccent
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall
     }
@@ -383,14 +403,14 @@ PanelWindow {
     height: 34
     radius: 9
     color: utilityMouse.containsMouse
-      ? (danger ? Util.alpha(Color.urgent, 0.18) : Util.alpha(Color.foreground, 0.13))
-      : (selected ? Util.alpha(Color.accent, 0.14) : Util.alpha(Color.foreground, 0.055))
-    border.color: selected ? Util.alpha(Color.accent, 0.60) : "transparent"
+      ? (danger ? Util.alpha(Color.urgent, 0.18) : Util.alpha(root.paletteForeground, 0.13))
+      : (selected ? Util.alpha(root.paletteAccent, 0.14) : Util.alpha(root.paletteForeground, 0.055))
+    border.color: selected ? Util.alpha(root.paletteAccent, 0.60) : "transparent"
     border.width: 1
     Text {
       anchors.centerIn: parent
       text: label
-      color: danger ? Color.urgent : Color.foreground
+      color: danger ? Color.urgent : root.paletteForeground
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall
     }
@@ -399,7 +419,9 @@ PanelWindow {
       anchors.fill: parent
       hoverEnabled: true
       onClicked: {
-        root.actionTriggered(action, root.itemData)
+        if (action === "appearanceTheme") root.appearanceModeAdjusted("theme")
+        else if (action === "appearanceDefault") root.appearanceModeAdjusted("default")
+        else root.actionTriggered(action, root.itemData)
       }
     }
   }

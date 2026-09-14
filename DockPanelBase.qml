@@ -29,6 +29,11 @@ Item {
   property double ownWriteUntil: 0
   property real magnification: 1.85
   property real roundness: 1
+  property string appearanceMode: "theme"
+  readonly property color dockBackground: appearanceMode === "theme" ? Color.background : "#242426"
+  readonly property color dockForeground: appearanceMode === "theme" ? Color.foreground : "#f5f5f7"
+  readonly property color dockAccent: appearanceMode === "theme" ? Color.accent : "#0a84ff"
+  onAppearanceModeChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
   property bool applyingSettings: false
   property var layoutOptions: {
     var options = Object.assign({}, DockModel.LAYOUT_OPTS)
@@ -241,7 +246,7 @@ Item {
 
   function saveSettings() {
     if (root.applyingSettings) return
-    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness })
+    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness, appearanceMode: root.appearanceMode })
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
     // settingsFile uses atomicWrites: setText writes to a sibling temp and
@@ -1451,6 +1456,7 @@ Item {
       root.applyingSettings = true
       root.magnification = parsed.magnification
       root.roundness = parsed.roundness
+      root.appearanceMode = parsed.appearanceMode
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
       root.applyingSettings = false
       // If auto-hide is turned off, ensure the dock is fully revealed.
@@ -1664,8 +1670,8 @@ Item {
       width: root.surfaceWidth
       height: root.surfaceHeight
       radius: Math.min(width, height) / 2 * root.roundness
-      color: Color.background
-      border.color: Util.alpha(Color.accent, root.dockHovered ? 0.55 : 0.24)
+      color: root.dockBackground
+      border.color: Util.alpha(root.dockAccent, root.dockHovered ? 0.55 : 0.24)
       border.width: 1
       opacity: root.enabled ? 1 : 0
       Behavior on border.color { ColorAnimation { duration: 180 } }
@@ -1677,7 +1683,7 @@ Item {
         radius: Math.max(0, parent.radius - 3)
         color: "transparent"
         border.width: 1
-        border.color: Util.alpha(Color.foreground, 0.05)
+        border.color: Util.alpha(root.dockForeground, 0.05)
       }
 
       Behavior on x {
@@ -1771,6 +1777,8 @@ Item {
               id: dockItem
               anchors.centerIn: parent
               itemData: wrapper.liveData
+              accentColor: root.dockAccent
+              foregroundColor: root.dockForeground
               iconSize: root.iconSize
               dockSide: root.dockSide
               animationEnabled: wrapper.animating
@@ -1842,15 +1850,15 @@ Item {
       width: tooltipText.implicitWidth + 20
       height: 24
       radius: 10
-      color: Util.alpha(Color.background, 0.82)
-      border.color: Util.alpha(Color.foreground, 0.08)
+      color: Util.alpha(root.dockBackground, 0.82)
+      border.color: Util.alpha(root.dockForeground, 0.08)
       border.width: 1
       Text {
         textFormat: Text.PlainText
         id: tooltipText
         anchors.centerIn: parent
         text: root.tooltipItem ? (root.tooltipItem.name || root.tooltipItem.id) : ""
-        color: Color.foreground
+        color: root.dockForeground
         font.family: Style.font.family
         font.pixelSize: Style.font.bodySmall
       }
@@ -1909,6 +1917,8 @@ Item {
     autoHideEnabled: root.autoHide
     magnification: root.magnification
     roundness: root.roundness
+    appearanceMode: root.appearanceMode
+    onAppearanceModeAdjusted: function(value) { root.appearanceMode = value }
     onMagnificationAdjusted: function(value) { root.magnification = value }
     onRoundnessAdjusted: function(value) { root.roundness = value }
     dockSide: root.dockSide
@@ -2143,8 +2153,8 @@ Item {
         width: parent.width - 4
         height: parent.height - 4
         radius: root.iconSize * 0.26
-        color: Util.alpha(Color.background, 0.55)
-        border.color: Util.alpha(Color.foreground, 0.18)
+        color: Util.alpha(root.dockBackground, 0.55)
+        border.color: Util.alpha(root.dockForeground, 0.18)
         border.width: 1
       }
 
