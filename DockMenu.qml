@@ -1,6 +1,6 @@
 import "."
 import QtQuick
-import QtQuick.Controls as Controls
+import QtQuick.Controls.Basic as Controls
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
@@ -247,6 +247,12 @@ PanelWindow {
     }
     Controls.Slider {
       id: slider
+      // Explicit hit area: custom handles/tracks otherwise have zero implicit height.
+      height: 40
+      implicitHeight: 40
+      padding: 9
+      hoverEnabled: true
+      focusPolicy: Qt.StrongFocus
       anchors.left: parent.left
       anchors.leftMargin: 160
       anchors.right: valueLabel.left
@@ -260,6 +266,7 @@ PanelWindow {
         x: slider.leftPadding
         y: slider.topPadding + slider.availableHeight / 2 - height / 2
         width: slider.availableWidth
+        implicitHeight: 4
         height: 4; radius: 2
         color: Util.alpha(Color.foreground, 0.15)
         Rectangle { width: slider.visualPosition * parent.width; height: parent.height; radius: 2; color: Color.accent }
@@ -267,6 +274,7 @@ PanelWindow {
       handle: Rectangle {
         x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
         y: slider.topPadding + slider.availableHeight / 2 - height / 2
+        implicitWidth: 18; implicitHeight: 18
         width: 18; height: 18; radius: 9
         color: slider.pressed ? Color.accent : Color.foreground
         border.color: Color.accent
