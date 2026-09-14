@@ -392,3 +392,16 @@ test("theme choice persists and existing settings default to theme", () => {
     assert.equal(restored.roundness, 0.5)
   }
 })
+
+
+test("transparency persists and validates old or invalid settings", () => {
+  assert.equal(model.parseSettings('{}').transparency, 0.14)
+  assert.equal(model.parseSettings('{"transparency":null}').transparency, 0.14)
+  assert.equal(model.parseSettings('{"transparency":-1}').transparency, 0)
+  assert.equal(model.parseSettings('{"transparency":2}').transparency, 1)
+  for (const transparency of [0, 0.14, 0.65, 1]) {
+    const result = model.parseSettings(model.serializeSettings({appearanceMode: "default", transparency}))
+    assert.equal(result.transparency, transparency)
+    assert.equal(result.appearanceMode, "default")
+  }
+})

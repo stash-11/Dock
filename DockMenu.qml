@@ -19,6 +19,8 @@ PanelWindow {
   property string dockSide: "bottom"
   property real magnification: 1.85
   property real roundness: 1
+  property real transparency: 0.14
+  signal transparencyAdjusted(real value)
   property string appearanceMode: "theme"
   readonly property color paletteBackground: appearanceMode === "theme" ? Color.background : "#242426"
   readonly property color paletteForeground: appearanceMode === "theme" ? Color.foreground : "#f5f5f7"
@@ -42,7 +44,7 @@ PanelWindow {
     x: Math.round((root.width - width) / 2)
     y: Math.round((root.height - height) / 2)
     width: 650
-    height: root.settingsPage ? 390 : 290
+    height: root.settingsPage ? (root.appearanceMode === "default" ? 442 : 390) : 290
     radius: 22
     color: Util.alpha(root.paletteBackground, 0.97)
     border.color: Util.alpha(root.paletteForeground, 0.14)
@@ -297,6 +299,15 @@ PanelWindow {
           from: 0; to: 1; stepSize: 0.05
           value: root.roundness
           onAdjusted: function(value) { root.roundnessAdjusted(value) }
+        }
+        AppearanceControl {
+          visible: root.appearanceMode === "default"
+          width: parent.width
+          label: "Transparency"
+          valueText: Math.round(root.transparency * 100) + "%"
+          from: 0; to: 1; stepSize: 0.01
+          value: root.transparency
+          onAdjusted: function(value) { root.transparencyAdjusted(value) }
         }
       }
     }

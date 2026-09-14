@@ -29,6 +29,8 @@ Item {
   property double ownWriteUntil: 0
   property real magnification: 1.85
   property real roundness: 1
+  property real transparency: 0.14
+  onTransparencyChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
   property string appearanceMode: "theme"
   readonly property color dockBackground: appearanceMode === "theme" ? Color.background : "#242426"
   readonly property color dockForeground: appearanceMode === "theme" ? Color.foreground : "#f5f5f7"
@@ -246,7 +248,7 @@ Item {
 
   function saveSettings() {
     if (root.applyingSettings) return
-    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness, appearanceMode: root.appearanceMode })
+    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness, appearanceMode: root.appearanceMode, transparency: root.transparency })
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
     // settingsFile uses atomicWrites: setText writes to a sibling temp and
@@ -1456,6 +1458,7 @@ Item {
       root.applyingSettings = true
       root.magnification = parsed.magnification
       root.roundness = parsed.roundness
+      root.transparency = parsed.transparency
       root.appearanceMode = parsed.appearanceMode
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
       root.applyingSettings = false
@@ -1671,7 +1674,7 @@ Item {
       height: root.surfaceHeight
       radius: Math.min(width, height) / 2 * root.roundness
       // Tint only the surface, so icons keep their full opacity.
-      color: root.appearanceMode === "default" ? Qt.rgba(0.075, 0.075, 0.085, 0.86) : root.dockBackground
+      color: root.appearanceMode === "default" ? Qt.rgba(0.075, 0.075, 0.085, 1 - root.transparency) : root.dockBackground
       border.color: root.appearanceMode === "default"
         ? Qt.rgba(1, 1, 1, 0.12)
         : Util.alpha(root.dockAccent, root.dockHovered ? 0.55 : 0.24)
@@ -1920,6 +1923,8 @@ Item {
     autoHideEnabled: root.autoHide
     magnification: root.magnification
     roundness: root.roundness
+    transparency: root.transparency
+    onTransparencyAdjusted: function(value) { root.transparency = value }
     appearanceMode: root.appearanceMode
     onAppearanceModeAdjusted: function(value) { root.appearanceMode = value }
     onMagnificationAdjusted: function(value) { root.magnification = value }
