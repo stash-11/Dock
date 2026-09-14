@@ -69,14 +69,21 @@ PanelWindow {
             fillMode: Image.PreserveAspectFit
             visible: !root.settingsPage && status === Image.Ready
           }
+          Image {
+            anchors.centerIn: parent
+            width: 32; height: 32
+            source: Qt.resolvedUrl("assets/settings.svg")
+            sourceSize: Qt.size(64, 64)
+            visible: root.settingsPage
+          }
           Text {
             anchors.centerIn: parent
-            text: root.settingsPage ? "⚙" : (root.itemData && root.itemData.name ? String(root.itemData.name).charAt(0).toUpperCase() : "•")
+            text: root.itemData && root.itemData.name ? String(root.itemData.name).charAt(0).toUpperCase() : "•"
             color: Color.foreground
             font.family: Style.font.family
             font.pixelSize: 24
             font.bold: true
-            visible: !appIcon.visible
+            visible: !root.settingsPage && !appIcon.visible
           }
         }
 
@@ -108,11 +115,12 @@ PanelWindow {
           color: settingsMouse.containsMouse ? Util.alpha(Color.foreground, 0.12) : "transparent"
           Accessible.role: Accessible.Button
           Accessible.name: root.settingsPage ? "Back to application actions" : "Dock settings"
-          Text {
+          Image {
             anchors.centerIn: parent
-            text: root.settingsPage ? "←" : "⚙"
-            color: Color.foreground
-            font.pixelSize: 22
+            width: 22; height: 22
+            source: Qt.resolvedUrl(root.settingsPage ? "assets/back.svg" : "assets/settings.svg")
+            sourceSize: Qt.size(44, 44)
+            smooth: true
           }
           MouseArea {
             id: settingsMouse
