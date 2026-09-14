@@ -1670,8 +1670,11 @@ Item {
       width: root.surfaceWidth
       height: root.surfaceHeight
       radius: Math.min(width, height) / 2 * root.roundness
-      color: root.dockBackground
-      border.color: Util.alpha(root.dockAccent, root.dockHovered ? 0.55 : 0.24)
+      // Tint only the surface, so icons keep their full opacity.
+      color: root.appearanceMode === "default" ? Qt.rgba(0.075, 0.075, 0.085, 0.86) : root.dockBackground
+      border.color: root.appearanceMode === "default"
+        ? Qt.rgba(1, 1, 1, 0.12)
+        : Util.alpha(root.dockAccent, root.dockHovered ? 0.55 : 0.24)
       border.width: 1
       opacity: root.enabled ? 1 : 0
       Behavior on border.color { ColorAnimation { duration: 180 } }

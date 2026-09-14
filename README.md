@@ -52,4 +52,4 @@ Hover shows application names only; window thumbnail previews are disabled.
 
 Right-click an icon: below **Dock Options**, adjust **Magnification** (Off–2.5×) and **Rounded corners** (0–100%). Changes save to `~/.config/omarchy/dock-settings.json`.
 
-Settings → Appearance → Colors offers **Theme** (active Omarchy palette) and **Default** (neutral dark with blue accents). The choice is saved automatically.
+Settings → Appearance → Colors offers **Theme** (active Omarchy palette) and **Default** (slightly transparent charcoal dock with blue accents). The choice is saved automatically.
