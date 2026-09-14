@@ -1674,7 +1674,7 @@ Item {
       height: root.surfaceHeight
       radius: Math.min(width, height) / 2 * root.roundness
       // Tint only the surface, so icons keep their full opacity.
-      color: root.appearanceMode === "default" ? Qt.rgba(0.075, 0.075, 0.085, 1 - root.transparency) : root.dockBackground
+      color: root.appearanceMode === "default" ? Qt.rgba(0.075, 0.075, 0.085, 1 - root.transparency) : Util.alpha(root.dockBackground, 1 - root.transparency)
       border.color: root.appearanceMode === "default"
         ? Qt.rgba(1, 1, 1, 0.12)
         : Util.alpha(root.dockAccent, root.dockHovered ? 0.55 : 0.24)

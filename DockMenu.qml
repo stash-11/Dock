@@ -44,7 +44,7 @@ PanelWindow {
     x: Math.round((root.width - width) / 2)
     y: Math.round((root.height - height) / 2)
     width: 650
-    height: root.settingsPage ? (root.appearanceMode === "default" ? 442 : 390) : 290
+    height: root.settingsPage ? 442 : 290
     radius: 22
     color: Util.alpha(root.paletteBackground, 0.97)
     border.color: Util.alpha(root.paletteForeground, 0.14)
@@ -301,7 +301,6 @@ PanelWindow {
           onAdjusted: function(value) { root.roundnessAdjusted(value) }
         }
         AppearanceControl {
-          visible: root.appearanceMode === "default"
           width: parent.width
           label: "Transparency"
           valueText: Math.round(root.transparency * 100) + "%"

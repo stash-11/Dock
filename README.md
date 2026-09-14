@@ -54,4 +54,4 @@ Right-click an icon: below **Dock Options**, adjust **Magnification** (Off–2.5
 
 Settings → Appearance → Colors offers **Theme** (active Omarchy palette) and **Default** (slightly transparent charcoal dock with blue accents). The choice is saved automatically.
 
-In Default mode, **Transparency** adjusts the dock background from opaque (0%) to transparent (100%). Icons stay opaque. Theme mode stays opaque.
+In both Theme and Default modes, **Transparency** adjusts the dock background from opaque (0%) to transparent (100%). Icons stay opaque. The saved transparency value is shared between both modes.
