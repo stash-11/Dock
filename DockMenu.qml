@@ -138,8 +138,16 @@ PanelWindow {
           radius: 16
           anchors.verticalCenter: parent.verticalCenter
           color: closeMouse.containsMouse ? Util.alpha(Color.foreground, 0.12) : "transparent"
-          Text { anchors.centerIn: parent; text: "×"; color: Util.alpha(Color.foreground, 0.65); font.pixelSize: 22 }
-          MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.opened = false }
+          Accessible.role: Accessible.Button
+          Accessible.name: "Close"
+          Image {
+            anchors.centerIn: parent
+            width: 22; height: 22
+            source: Qt.resolvedUrl("assets/close.svg")
+            sourceSize: Qt.size(44, 44)
+            smooth: true
+          }
+          MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.opened = false }
         }
       }
 
