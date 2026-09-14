@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "macos.dock",
+  "name": "My Dock \u00b7 Glass",
+  "version": "0.1.19",
+  "author": "ifubaraboye",
+  "description": "macOS-inspired theme-matched opaque dock with wide magnification, spring motion and launch bounce; preserves the reference dock features.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "DockPanel.qml"
+  }
+}
