@@ -1,57 +1,86 @@
-# Capsule style experiment
-
-Branch: `feature/new-style`. Restore point: Git tag `stable`.
-
-This style uses a fully rounded opaque capsule, theme-accent borders,
-soft accent tiles behind hovered icons and animated running indicators.
-The dock background keeps its resting width during magnification.
-Window previews remain disabled.
-
 # My Dock
 
-A macOS-inspired opaque restyle of the reference Omarchy dock. All application,
-pinning, ordering, icon picker, auto-hide, side placement, Downloads,
-Trash and app-switcher functionality is retained.
+My Dock is a macOS-inspired Omarchy panel dock with pointer magnification,
+launch animation, pinning, app ordering, auto-hide, side placement, an app
+switcher, icon management, and a separate settings view. Window thumbnail
+previews are disabled; hovering an app shows its name.
 
-## Appearance
+The dock surface can follow the active Omarchy theme or use a charcoal default
+style. Magnification, corner rounding, transparency, auto-hide, and placement
+are adjustable from the dock settings and are saved under `~/.config/omarchy/`.
 
-- Opaque rounded surface matching the active Omarchy theme.
-- Fixed resting dock width during magnification; icons can extend beyond the surface.
-- 1.85× magnification with a 150px influence radius and smooth 120ms easing.
-- Working hover lift, three-stage launch bounce and pressed-icon feedback.
-- Neutral running dots and expanded pointer coverage for enlarged icons.
-- 54px resting icons, 82px surface, 10px desktop-edge margin.
+## Install
 
-Edit `DockModel.js` for magnification and `DockPanel.qml` for dimensions.
-Keep slot size, spacing and padding in these files synchronized.
+Review the source before enabling it. Omarchy plugins run as unsandboxed code
+inside the long-lived shell process.
+
+```bash
+omarchy plugin add https://github.com/stash-11/Dock.git --enable --yes
+```
+
+The plugin ID is `io.github.stash-11.dock`. The helper script is optional and
+is used only for custom icon search and management:
+
+```bash
+mkdir -p ~/.local/bin
+ln -sf ~/.config/omarchy/plugins/io.github.stash-11.dock/scripts/omarchy-dock-icon ~/.local/bin/omarchy-dock-icon
+```
 
 ## Use
 
-This is an **Omarchy plugin**, with `DockPanel.qml` as its entry point, rather
-than a standalone `shell.qml`. It needs the host's `qs.Commons` and `qs.Ui`.
-The manifest retains `macos.dock` so existing settings, pins and IPC commands
-remain compatible. Use it as a replacement for that plugin, not alongside it.
+Right-click an app to open application actions. Select the settings icon for
+Dock Options and Appearance. The settings page includes Theme or Default
+colors, magnification, rounded corners, transparency, auto-hide, and dock
+placement.
 
-To install manually, back up any existing `~/.config/omarchy/plugins/macos.dock`
-directory first, copy this folder there, then run `omarchy plugin enable macos.dock`.
-The workspace copy has not been installed or enabled automatically.
+The app switcher uses `Alt+Tab` and `Alt+Shift+Tab`; `Alt+Grave` and
+`Alt+Shift+Grave` are also available. The dock exposes IPC commands through
+`omarchy-shell -q io.github.stash-11.dock`, including `show`, `hide`, `toggle`,
+`toggleAutoHide`, `setAutoHide`, `getAutoHide`, `altTabNext`, `altTabPrev`, and
+`altTabCancel`.
 
-The dock surface uses the active theme background at full opacity. It does not reproduce Apple's
-proprietary refraction or add compositor-wide blur. Window minimization effects
-belong to the compositor and are not changed by this plugin.
+## Requirements and dependencies
 
-## Validation
+The plugin requires Omarchy Quickshell with the `qs.Commons` and `qs.Ui`
+modules, a Wayland layer-shell compositor, and the standard Omarchy runtime.
+The optional icon helper additionally uses Bash, Python 3, curl, ImageMagick
+(`magick` or `convert` and `identify`), and `xdg-open`.
 
-Run `bash tests/run.sh`. The inherited insertion test uses a slot-relative
-coordinate to account for the larger magnification.
+The helper can download icon files only when the user explicitly requests an
+icon search or URL. Downloaded icons and mappings are stored under the user's
+Omarchy configuration. The plugin does not collect telemetry or contact a
+remote service during normal dock operation.
 
-See `README.reference.md` for inherited feature documentation and commands.
-The original license and attribution are preserved in `LICENSE` and the manifest.
+## Removal
 
-Hover shows application names only; window thumbnail previews are disabled.
+Disable and remove the plugin through Omarchy so the shell state is updated:
 
-Right-click an icon: below **Dock Options**, adjust **Magnification** (Off–2.5×) and **Rounded corners** (0–100%). Changes save to `~/.config/omarchy/dock-settings.json`.
+```bash
+omarchy plugin disable io.github.stash-11.dock
+omarchy plugin remove io.github.stash-11.dock --yes
+omarchy restart shell
+```
 
-Settings → Appearance → Colors offers **Theme** (active Omarchy palette) and **Default** (slightly transparent charcoal dock with blue accents). The choice is saved automatically.
+The plugin does not overwrite existing Omarchy configuration without an
+explicit dock action. Settings, pins, and custom icons created by the user may
+remain under `~/.config/omarchy/`; remove those files only if you want to
+delete the saved dock state.
 
-In both Theme and Default modes, **Transparency** adjusts the dock background from opaque (0%) to transparent (100%). Icons stay opaque. The saved transparency value is shared between both modes.
+## Development and validation
+
+```bash
+./tests/run.sh
+omarchy plugin validate .
+```
+
+## License and attribution
+
+This repository is MIT licensed. It is a modified, separately maintained
+version of the Omarchy dock implementation by ifubaraboye; upstream
+attribution and the original license are retained in `README.reference.md` and
+`LICENSE`. The repository owner is responsible for confirming permission to
+redistribute the modified source and included assets.
+
+Marketplace validation and approval are limited listing checks, not a security
+audit or endorsement. Review the exact commit, source, permissions, and
+dependencies before installation.

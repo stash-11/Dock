@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "macos.dock",
-  "name": "My Dock \u00b7 Capsule",
-  "version": "0.1.19",
-  "author": "ifubaraboye",
-  "description": "Opaque theme-matched capsule dock with accent hover tiles, animated running indicators and fixed-width magnification.",
+  "id": "io.github.stash-11.dock",
+  "name": "My Dock",
+  "version": "1.0.0",
+  "author": "stash-11",
+  "description": "A theme-aware macOS-inspired Omarchy dock with magnification, auto-hide, pinning, app switching, and adjustable appearance.",
   "kinds": [
     "panel"
   ],

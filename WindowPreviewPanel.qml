@@ -48,7 +48,7 @@ PanelWindow {
         active: !!w.active
       })
       if (!card) {
-        console.warn("macos.dock preview card failed:", root.cardComponent.errorString())
+        console.warn("io.github.stash-11.dock preview card failed:", root.cardComponent.errorString())
         continue
       }
       card.activated.connect(function(data) { root.activated(data) })
@@ -64,7 +64,7 @@ PanelWindow {
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
   WlrLayershell.layer: WlrLayer.Overlay
-  WlrLayershell.namespace: "macos-dock-preview"
+  WlrLayershell.namespace: "io.github.stash-11-dock-preview"
   anchors { top: true; bottom: true; left: true; right: true }
   mask: Region { item: previewRow }
 

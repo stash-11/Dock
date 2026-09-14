@@ -207,7 +207,7 @@ Item {
   property var bouncingIds: []
 
   IpcHandler {
-    target: "macos.dock"
+    target: "io.github.stash-11.dock"
     function toggle() { root.enabled = !root.enabled }
     function show() { root.enabled = true }
     function hide() { root.enabled = false }
@@ -456,7 +456,7 @@ Item {
         // installed apps that have no open window yet.
         libraryEntries = rows.map(function(row) { return row && row.entry ? row.entry : row })
       } catch (error) {
-        console.warn("macos.dock: app library refresh failed", error)
+        console.warn("io.github.stash-11.dock: app library refresh failed", error)
       }
     }
 
@@ -468,7 +468,7 @@ Item {
       root.appEntries = DockModel.mergeAppEntries(libraryEntries, values)
       root.appLibraryReady = root.appEntries.length > 0
     } catch (error) {
-      console.warn("macos.dock: desktop-entry fallback failed", error)
+      console.warn("io.github.stash-11.dock: desktop-entry fallback failed", error)
       root.appEntries = DockModel.mergeAppEntries(libraryEntries, [])
       root.appLibraryReady = root.appEntries.length > 0
     }
@@ -664,7 +664,7 @@ Item {
   function notifyConflict() {
     if (conflictNotice.running) return
     conflictNotice.running = true
-    Quickshell.execDetached(["omarchy-shell", "notify", "macos.dock is disabled because rosakodu.dock is enabled"])
+    Quickshell.execDetached(["omarchy-shell", "notify", "io.github.stash-11.dock is disabled because rosakodu.dock is enabled"])
   }
 
   // Omarchy 4.0.3 scopes appLibrary away from panel plugins. Keep using the
@@ -688,7 +688,7 @@ Item {
         // Existing windows must be focused through Hyprland's IPC path.
         var hyprWindow = root.hyprlandWindowForItem(item)
         if (!root.focusExistingWindow(hyprWindow))
-          console.warn("macos.dock: could not resolve running window for " + item.id)
+          console.warn("io.github.stash-11.dock: could not resolve running window for " + item.id)
         return
       } catch (error) {}
     }
@@ -983,7 +983,7 @@ Item {
     // exactly what received the drag instead of a coordinate mapping
     // re-derived at release time.
     var inside = root.dragInsideDock
-    console.log("macos.dock finishDrag", JSON.stringify({ id: id, inside: inside, localX: surfacePosition.x, localY: surfacePosition.y, surfaceW: dockSurface.width, surfaceH: dockSurface.height, cursorX: root.cursorXInRow() }))
+    console.log("io.github.stash-11.dock finishDrag", JSON.stringify({ id: id, inside: inside, localX: surfacePosition.x, localY: surfacePosition.y, surfaceW: dockSurface.width, surfaceH: dockSurface.height, cursorX: root.cursorXInRow() }))
     var wasPinned = root.pinnedIds.indexOf(id) !== -1
     var persist = false
 
@@ -995,7 +995,7 @@ Item {
       // Reorder the session dock — never the pinned list. Dragging never
       // promotes a running app into a persistent pin.
       var newOrder = DockModel.moveInOrder(root.dockOrder, id, idx)
-      console.log("macos.dock reorder", JSON.stringify({ id: id, idx: idx, wasPinned: wasPinned, dockOrderBefore: root.dockOrder, newOrder: newOrder, pinnedBefore: root.pinnedIds, runningIds: root.runningIds }))
+      console.log("io.github.stash-11.dock reorder", JSON.stringify({ id: id, idx: idx, wasPinned: wasPinned, dockOrderBefore: root.dockOrder, newOrder: newOrder, pinnedBefore: root.pinnedIds, runningIds: root.runningIds }))
       if (newOrder.join("|") !== root.dockOrder.join("|")) {
         root.dockOrder = newOrder
         // Snap the dropped delegate straight to its new slot. Without this the
@@ -1052,7 +1052,7 @@ Item {
     root.ghostScale = 1.18
     root.ghostSource = ""
     } catch (error) {
-      console.warn("macos.dock finishDrag error", error)
+      console.warn("io.github.stash-11.dock finishDrag error", error)
       root.floatingId = ""
       root.tempDrag = { id: "", index: -1 }
       root.refreshItems()
@@ -1249,7 +1249,7 @@ Item {
       var value = JSON.parse(String(content || "{}"))
       if (value && typeof value === "object" && !Array.isArray(value)) parsed = value
     } catch (error) {
-      console.warn("macos.dock: invalid dock-icons.json")
+      console.warn("io.github.stash-11.dock: invalid dock-icons.json")
     }
     root.customIcons = parsed
     root.customIconRevision++
@@ -1308,7 +1308,7 @@ Item {
   }
 
   function defaultIconSource() {
-    return Util.fileUrl(root.home + "/.config/omarchy/plugins/macos.dock/assets/" + IconResolver.DEFAULT_ICON_ASSET)
+    return Util.fileUrl(root.home + "/.config/omarchy/plugins/io.github.stash-11.dock/assets/" + IconResolver.DEFAULT_ICON_ASSET)
   }
 
   // Theme icons carry their own transparent margin (often only 70-95% painted
@@ -1421,7 +1421,7 @@ Item {
       } else {
         // Reloaded after a change: apply only content we did not write.
         if (!DockModel.shouldReprocess(text())) return
-        console.log("macos.dock pinFileApplied", JSON.stringify({ pinned: root.pinnedIds }))
+        console.log("io.github.stash-11.dock pinFileApplied", JSON.stringify({ pinned: root.pinnedIds }))
         root.pinnedIds = DockModel.parsePinned(text(), root.pinnedIds)
       }
       root.dockOrder = DockModel.parseOrder(text(), root.dockOrder)
@@ -1611,7 +1611,7 @@ Item {
 
   Process {
     id: layerRuleProcess
-    command: ["hyprctl", "eval", "hl.layer_rule({ match = { namespace = \"macos-dock-alt-tab\" }, no_anim = true, animation = \"none\" })"]
+    command: ["hyprctl", "eval", "hl.layer_rule({ match = { namespace = \"io.github.stash-11-dock-alt-tab\" }, no_anim = true, animation = \"none\" })"]
   }
 
   Timer {
@@ -1632,7 +1632,7 @@ Item {
     // app switcher HUD is the primary alt-tab. The defaults bind ALT+TAB twice
     // (cycle + bring-to-top), so both must be unbound first. ALT+GRAVE stays
     // as the dedicated fallback combo.
-    command: ["hyprctl", "eval", "hl.unbind(\"ALT + TAB\") hl.unbind(\"ALT + SHIFT + TAB\") hl.unbind(\"ALT + GRAVE\") hl.unbind(\"ALT + SHIFT + GRAVE\") o.bind(\"ALT + TAB\", \"App switcher next\", \"omarchy-shell -q macos.dock altTabNext\") o.bind(\"ALT + SHIFT + TAB\", \"App switcher prev\", \"omarchy-shell -q macos.dock altTabPrev\") o.bind(\"ALT + GRAVE\", \"App switcher next\", \"omarchy-shell -q macos.dock altTabNext\") o.bind(\"ALT + SHIFT + GRAVE\", \"App switcher prev\", \"omarchy-shell -q macos.dock altTabPrev\")"]
+    command: ["hyprctl", "eval", "hl.unbind(\"ALT + TAB\") hl.unbind(\"ALT + SHIFT + TAB\") hl.unbind(\"ALT + GRAVE\") hl.unbind(\"ALT + SHIFT + GRAVE\") o.bind(\"ALT + TAB\", \"App switcher next\", \"omarchy-shell -q io.github.stash-11.dock altTabNext\") o.bind(\"ALT + SHIFT + TAB\", \"App switcher prev\", \"omarchy-shell -q io.github.stash-11.dock altTabPrev\") o.bind(\"ALT + GRAVE\", \"App switcher next\", \"omarchy-shell -q io.github.stash-11.dock altTabNext\") o.bind(\"ALT + SHIFT + GRAVE\", \"App switcher prev\", \"omarchy-shell -q io.github.stash-11.dock altTabPrev\")"]
   }
 
   PanelWindow {
@@ -1642,7 +1642,7 @@ Item {
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.namespace: "macos-dock"
+    WlrLayershell.namespace: "io.github.stash-11-dock"
     anchors { top: true; bottom: true; left: true; right: true }
     // Anchored to all four edges on purpose: drag-to-reorder and the hover
     // magnify effect both need pointer coordinates across the whole screen,
@@ -1653,7 +1653,7 @@ Item {
     // the small visible pill, on any host with Hyprland blur enabled. The
     // Theme surface below is deliberately the only "glass" effect; no
     // compositor backdrop blur is requested for this namespace or for
-    // "macos-dock-material" in DockPanel.qml, which shares this geometry.
+    // "io.github.stash-11-dock-material" in DockPanel.qml, which shares this geometry.
     mask: Region { item: pointerEnvelope }
 
     Item {
@@ -1961,7 +1961,7 @@ Item {
   // back to PATH. The picker surface shows a clear error if neither exists.
   Process {
     id: helperResolveProcess
-    command: ["bash", "-c", "if [ -x \"$HOME/.config/omarchy/plugins/macos.dock/scripts/omarchy-dock-icon\" ]; then printf '%s' \"$HOME/.config/omarchy/plugins/macos.dock/scripts/omarchy-dock-icon\"; elif [ -x \"$HOME/.local/bin/omarchy-dock-icon\" ]; then printf '%s' \"$HOME/.local/bin/omarchy-dock-icon\"; else command -v omarchy-dock-icon || true; fi"]
+    command: ["bash", "-c", "if [ -x \"$HOME/.config/omarchy/plugins/io.github.stash-11.dock/scripts/omarchy-dock-icon\" ]; then printf '%s' \"$HOME/.config/omarchy/plugins/io.github.stash-11.dock/scripts/omarchy-dock-icon\"; elif [ -x \"$HOME/.local/bin/omarchy-dock-icon\" ]; then printf '%s' \"$HOME/.local/bin/omarchy-dock-icon\"; else command -v omarchy-dock-icon || true; fi"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -2066,7 +2066,7 @@ Item {
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Background
-    WlrLayershell.namespace: "macos-dock-spacer"
+    WlrLayershell.namespace: "io.github.stash-11-dock-spacer"
     WlrLayershell.exclusiveZone: root.autoHide ? 0 : (root.enabled ? root.dockHeight + root.bottomMargin : 0)
     // The exclusive zone is edge-anchored so tiled windows avoid the dock
     // footprint on whichever side the dock currently lives. Anchors are
@@ -2095,7 +2095,7 @@ Item {
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.namespace: "macos-dock-edge"
+    WlrLayershell.namespace: "io.github.stash-11-dock-edge"
     // Full-screen surface on every side; input is limited to the mask below,
     // exactly like dockWindow, so the hot-zone can never balloon into a
     // full-screen input grab (the previous conditional-undefined anchors did).
@@ -2141,7 +2141,7 @@ Item {
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "macos-dock-drag"
+    WlrLayershell.namespace: "io.github.stash-11-dock-drag"
     anchors { top: true; bottom: true; left: true; right: true }
     mask: Region { item: ghostAnchor }
 

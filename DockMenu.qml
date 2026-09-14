@@ -35,7 +35,7 @@ PanelWindow {
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
   WlrLayershell.layer: WlrLayer.Overlay
-  WlrLayershell.namespace: "macos-dock-menu"
+  WlrLayershell.namespace: "io.github.stash-11-dock-menu"
   anchors { top: true; bottom: true; left: true; right: true }
   mask: Region { item: dismissSurface }
 
