@@ -1,5 +1,6 @@
 import "."
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
@@ -82,6 +83,8 @@ Item {
     // Cached screenshots remain useful as a fallback if the compositor cannot
     // expose a Wayland toplevel for this window.
     Image {
+      layer.enabled: String(source).split("?")[0].endsWith("/assets/default-app.svg")
+      layer.effect: MultiEffect { colorization: 1; colorizationColor: Color.foreground }
       id: cachedThumbnail
       anchors.fill: parent
       anchors.margins: 8
@@ -107,6 +110,10 @@ Item {
       }
 
       Image {
+
+        layer.enabled: String(source).split("?")[0].endsWith("/assets/default-app.svg")
+
+        layer.effect: MultiEffect { colorization: 1; colorizationColor: Color.foreground }
         id: iconImage
         anchors.centerIn: parent
         width: 64
@@ -117,13 +124,12 @@ Item {
         asynchronous: true
         cache: true
 
-        Text {
-        textFormat: Text.PlainText
+        ThemedIcon {
           anchors.centerIn: parent
           visible: parent.status !== Image.Ready
-          text: "◆"
-          color: Color.foreground
-          font.pixelSize: 26
+          width: 26; height: width
+          source: Qt.resolvedUrl("assets/default-app.svg")
+          sourceSize: Qt.size(48, 48)
         }
       }
     }

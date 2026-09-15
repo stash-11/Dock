@@ -256,16 +256,17 @@ function hoverRamp(distance, reach) {
     return 0.5 * u + Math.sin(Math.PI * u) / (2 * Math.PI)
 }
 
-// Sample a cosine wave against resting centers, then pack the scaled slots.
-// Keep the panel footprint independent of the wave and center the visual row.
+// Sample a cosine wave against resting centers, then fan the scaled slots out
+// around the hovered icon. The hovered center stays fixed; neighbors move only
+// far enough to make room, which matches the macOS dock's local magnification.
 function computeLayout(flow, cursorX, opts) {
     opts = opts || LAYOUT_OPTS
     var placements = {}
     var cursorValid = typeof cursorX === "number" && cursorX >= 0
     var reach = Math.max(opts.slotWidth, opts.radius)
     var restingWidth = 0
-    var visualWidth = 0
     var slots = []
+    var centers = []
     for (var i = 0; i < flow.length; i++) {
         var item = flow[i]
         var slot = item.separator ? opts.separatorWidth : opts.slotWidth
@@ -273,23 +274,51 @@ function computeLayout(flow, cursorX, opts) {
         var scale = cursorValid && !item.separator
           ? 1 + (opts.hoverScale - 1) * hoverFalloff(center - cursorX, reach) : 1
         slots.push({ item: item, width: slot * scale, scale: scale })
+        centers.push(center)
         restingWidth += slot + opts.spacing
-        visualWidth += slot * scale + opts.spacing
     }
     restingWidth = Math.max(0, restingWidth - opts.spacing)
-    visualWidth = Math.max(0, visualWidth - opts.spacing)
-    var x = (restingWidth - visualWidth) / 2
+
+    if (cursorValid && slots.length) {
+        var anchor = -1
+        var nearest = Infinity
+        for (var a = 0; a < slots.length; a++) {
+            if (slots[a].item.separator) continue
+            var distance = Math.abs(centers[a] - cursorX)
+            if (distance < nearest) { nearest = distance; anchor = a }
+        }
+        if (anchor >= 0) {
+            for (var left = anchor - 1; left >= 0; left--)
+                centers[left] = centers[left + 1] - opts.spacing - (slots[left + 1].width + slots[left].width) / 2
+            for (var right = anchor + 1; right < slots.length; right++)
+                centers[right] = centers[right - 1] + opts.spacing + (slots[right - 1].width + slots[right].width) / 2
+        }
+    }
+
+    // Keep the visual group centered in the fixed dock surface while retaining
+    // the local fan spacing above. This avoids the whole row sliding when the
+    // pointer crosses the dock, while preserving the centered macOS footprint.
+    var visualLeft = 0
+    var visualRight = restingWidth
+    if (slots.length) {
+        visualLeft = centers[0] - slots[0].width / 2
+        visualRight = centers[centers.length - 1] + slots[slots.length - 1].width / 2
+        var centerCorrection = restingWidth / 2 - (visualLeft + visualRight) / 2
+        for (var c = 0; c < centers.length; c++) centers[c] += centerCorrection
+        visualLeft += centerCorrection
+        visualRight += centerCorrection
+    }
+
     for (var j = 0; j < slots.length; j++) {
         var entry = slots[j]
         placements[entry.item.id] = {
-          x: x, scale: entry.scale,
+          x: centers[j] - entry.width / 2, scale: entry.scale,
           // Bottom-origin scaling already raises the icon; no second lift.
           lift: 0, phantom: !!entry.item.phantom
         }
-        x += entry.width + opts.spacing
     }
     return { placements: placements, flowWidth: restingWidth,
-      visualWidth: visualWidth, totalWidth: restingWidth + 2 * opts.sidePadding }
+      visualWidth: visualRight - visualLeft, totalWidth: restingWidth + 2 * opts.sidePadding }
 }
 
 // Drag insertion uses exactly the same slot centers as rendering.
@@ -374,17 +403,27 @@ function boundedSetting(value, fallback, low, high) {
       ? Math.max(low, Math.min(high, value)) : fallback
 }
 
+// Preserve arbitrary stack length; discard unknown or malformed cards.
+function normalizeWidgets(value) {
+    if (!Array.isArray(value)) return []
+    return value.filter(function(card) {
+        return card && ["music", "clock", "weather"].indexOf(card.type) !== -1
+    }).map(function(card) {
+        return { type: card.type, player: typeof card.player === "string" ? card.player : "" }
+    })
+}
+
 function parseSettings(text, fallback) {
     var defaults = fallback || { autoHide: true, dockSide: "bottom" }
     var baseSide = normalizeSide(defaults.dockSide)
-    var base = { screenshotOutput: ["slurp", "copy", "save"].indexOf(defaults.screenshotOutput) !== -1 ? defaults.screenshotOutput : "slurp", autoHide: !!defaults.autoHide, dockSide: baseSide, appearanceMode: defaults.appearanceMode === "default" ? "default" : "theme", magnification: boundedSetting(defaults.magnification, 1.85, 1, 2.5), transparency: boundedSetting(defaults.transparency, 0.14, 0, 1), roundness: boundedSetting(defaults.roundness, 1, 0, 1) }
+    var base = { appSpacing: Math.round(boundedSetting(defaults.appSpacing, 5, 0, 32)), dockScale: boundedSetting(defaults.dockScale, 0.9, 0.7, 1.4), widgets: normalizeWidgets(defaults.widgets), screenshotOutput: ["slurp", "copy", "save"].indexOf(defaults.screenshotOutput) !== -1 ? defaults.screenshotOutput : "slurp", autoHide: !!defaults.autoHide, dockSide: baseSide, appearanceMode: defaults.appearanceMode === "default" ? "default" : "theme", magnification: boundedSetting(defaults.magnification, 1.5, 1, 2.5), screenshotMagnification: boundedSetting(defaults.screenshotMagnification, boundedSetting(defaults.magnification, 1.5, 1, 2.5), 1, 2.5), transparency: boundedSetting(defaults.transparency, 0.11, 0, 1), roundness: boundedSetting(defaults.roundness, 0.3, 0, 1) }
     var source = String(text || "").trim()
     if (!source) return base
     try {
         var parsed = JSON.parse(source)
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
             return base
-        var out = { screenshotOutput: ["slurp", "copy", "save"].indexOf(parsed.screenshotOutput) !== -1 ? parsed.screenshotOutput : base.screenshotOutput, autoHide: base.autoHide, dockSide: base.dockSide, appearanceMode: parsed.appearanceMode === "default" || parsed.appearanceMode === "theme" ? parsed.appearanceMode : base.appearanceMode, magnification: boundedSetting(parsed.magnification, base.magnification, 1, 2.5), transparency: boundedSetting(parsed.transparency, base.transparency, 0, 1), roundness: boundedSetting(parsed.roundness, base.roundness, 0, 1) }
+        var out = { appSpacing: Math.round(boundedSetting(parsed.appSpacing, base.appSpacing, 0, 32)), dockScale: boundedSetting(parsed.dockScale, base.dockScale, 0.7, 1.4), widgets: parsed.widgets === undefined ? base.widgets : normalizeWidgets(parsed.widgets), screenshotOutput: ["slurp", "copy", "save"].indexOf(parsed.screenshotOutput) !== -1 ? parsed.screenshotOutput : base.screenshotOutput, autoHide: base.autoHide, dockSide: base.dockSide, appearanceMode: parsed.appearanceMode === "default" || parsed.appearanceMode === "theme" ? parsed.appearanceMode : base.appearanceMode, magnification: boundedSetting(parsed.magnification, base.magnification, 1, 2.5), screenshotMagnification: boundedSetting(parsed.screenshotMagnification, boundedSetting(parsed.magnification, base.screenshotMagnification, 1, 2.5), 1, 2.5), transparency: boundedSetting(parsed.transparency, base.transparency, 0, 1), roundness: boundedSetting(parsed.roundness, base.roundness, 0, 1) }
         if (typeof parsed.autoHide === "boolean") out.autoHide = parsed.autoHide
         else if (typeof parsed.autoHide === "string") out.autoHide = parsed.autoHide === "true"
         if (parsed.dockSide !== undefined) out.dockSide = normalizeSide(parsed.dockSide)
@@ -397,7 +436,7 @@ function parseSettings(text, fallback) {
 function serializeSettings(settings) {
     var value = settings && typeof settings.autoHide === "boolean" ? settings.autoHide : true
     var side = normalizeSide(settings && settings.dockSide)
-    return JSON.stringify({ version: 1, screenshotOutput: settings && ["slurp", "copy", "save"].indexOf(settings.screenshotOutput) !== -1 ? settings.screenshotOutput : "slurp", autoHide: value, dockSide: side, appearanceMode: settings && settings.appearanceMode === "default" ? "default" : "theme", magnification: boundedSetting(settings && settings.magnification, 1.85, 1, 2.5), transparency: boundedSetting(settings && settings.transparency, 0.14, 0, 1), roundness: boundedSetting(settings && settings.roundness, 1, 0, 1) }, null, 2) + "\n"
+    return JSON.stringify({ version: 1, appSpacing: Math.round(boundedSetting(settings && settings.appSpacing, 5, 0, 32)), dockScale: boundedSetting(settings && settings.dockScale, 0.9, 0.7, 1.4), widgets: normalizeWidgets(settings && settings.widgets), screenshotOutput: settings && ["slurp", "copy", "save"].indexOf(settings.screenshotOutput) !== -1 ? settings.screenshotOutput : "slurp", autoHide: value, dockSide: side, appearanceMode: settings && settings.appearanceMode === "default" ? "default" : "theme", magnification: boundedSetting(settings && settings.magnification, 1.5, 1, 2.5), screenshotMagnification: boundedSetting(settings && settings.screenshotMagnification, boundedSetting(settings && settings.magnification, 1.5, 1, 2.5), 1, 2.5), transparency: boundedSetting(settings && settings.transparency, 0.11, 0, 1), roundness: boundedSetting(settings && settings.roundness, 0.3, 0, 1) }, null, 2) + "\n"
 }
 
 function shouldReprocessSettings(content) {
@@ -430,6 +469,7 @@ function shouldRevealDock(state) {
 // define `module`, so this branch is inert when imported by Quickshell.
 if (typeof module !== "undefined" && module.exports) {
     module.exports = {
+        normalizeWidgets: normalizeWidgets,
         DEFAULT_PINNED: DEFAULT_PINNED,
         LAYOUT_OPTS: LAYOUT_OPTS,
         normalizeId: normalizeId,

@@ -1,5 +1,6 @@
 import "."
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import qs.Commons
 import "IconResolver.js" as IconResolver
@@ -22,6 +23,7 @@ Item {
   property bool isDragging: false
   property bool leftPressed: false
   property bool tooltipVisible: false
+  property bool monochromeIcon: false
   property string iconSourceOverride: ""
   property point pressPosition: Qt.point(0, 0)
   // macOS-style launch bounce: isolated vertical offset added on top of the
@@ -121,6 +123,11 @@ Item {
 
   Image {
     id: icon
+    layer.enabled: root.monochromeIcon || String(source).endsWith("/assets/default-app.svg")
+    layer.effect: MultiEffect {
+      colorization: 1
+      colorizationColor: root.foregroundColor
+    }
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.top: parent.top
     width: root.iconSize
@@ -133,13 +140,13 @@ Item {
     opacity: root.leftPressed ? 0.65 : 1
     Behavior on opacity { NumberAnimation { duration: 90 } }
 
-    Text {
-        textFormat: Text.PlainText
+    ThemedIcon {
+      iconColor: root.foregroundColor
       anchors.centerIn: parent
       visible: parent.status !== Image.Ready
-      text: "◆"
-      color: root.foregroundColor
-      font.pixelSize: root.iconSize * 0.42
+      width: root.iconSize * 0.42; height: width
+      source: Qt.resolvedUrl("assets/default-app.svg")
+      sourceSize: Qt.size(48, 48)
     }
   }
 

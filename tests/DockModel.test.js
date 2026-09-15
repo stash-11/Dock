@@ -366,11 +366,11 @@ test("appearance settings persist, migrate old files and reject invalid values",
   assert.equal(restored.roundness, 0.35)
   assert.equal(restored.autoHide, false)
   assert.equal(restored.dockSide, "left")
-  assert.equal(model.parseSettings('{"autoHide":true}').magnification, 1.85)
-  assert.equal(model.parseSettings('{}').roundness, 1)
+  assert.equal(model.parseSettings('{"autoHide":true}').magnification, 1.5)
+  assert.equal(model.parseSettings('{}').roundness, 0.3)
   assert.equal(model.parseSettings('{"magnification":999,"roundness":-1}').magnification, 2.5)
   assert.equal(model.parseSettings('{"magnification":999,"roundness":-1}').roundness, 0)
-  assert.equal(model.parseSettings('{"magnification":null,"roundness":"bad"}').magnification, 1.85)
+  assert.equal(model.parseSettings('{"magnification":null,"roundness":"bad"}').magnification, 1.5)
   const flow = [{id: "a"}, {id: "b"}]
   const rest = model.computeLayout(flow, -1)
   for (const scale of [1, 1.85, 2.5]) {
@@ -395,8 +395,8 @@ test("theme choice persists and existing settings default to theme", () => {
 
 
 test("transparency persists and validates old or invalid settings", () => {
-  assert.equal(model.parseSettings('{}').transparency, 0.14)
-  assert.equal(model.parseSettings('{"transparency":null}').transparency, 0.14)
+  assert.equal(model.parseSettings('{}').transparency, 0.11)
+  assert.equal(model.parseSettings('{"transparency":null}').transparency, 0.11)
   assert.equal(model.parseSettings('{"transparency":-1}').transparency, 0)
   assert.equal(model.parseSettings('{"transparency":2}').transparency, 1)
   for (const transparency of [0, 0.14, 0.65, 1]) {
@@ -415,4 +415,54 @@ test("screenshot output persists and old or invalid settings retain file plus cl
     assert.equal(restored.autoHide, false)
     assert.equal(restored.magnification, 1.65)
   }
+})
+
+
+test("capture magnification persists independently and migrates existing settings", () => {
+  const saved = model.serializeSettings({ magnification: 2.2, screenshotMagnification: 1 })
+  const parsed = model.parseSettings(saved)
+  assert.equal(parsed.magnification, 2.2)
+  assert.equal(parsed.screenshotMagnification, 1)
+  assert.equal(model.parseSettings('{"magnification":2.1}').screenshotMagnification, 2.1)
+  assert.equal(model.parseSettings('{}').screenshotMagnification, 1.5)
+  assert.equal(model.parseSettings('{"screenshotMagnification":999}').screenshotMagnification, 2.5)
+  assert.equal(model.parseSettings('{"screenshotMagnification":0}').screenshotMagnification, 1)
+  assert.equal(model.parseSettings('{"screenshotMagnification":null}').screenshotMagnification, 1.5)
+})
+
+test("widget stacks preserve order, duplicates and player selections across settings saves", () => {
+  const cards = [{type: "music", player: "Spotify"}, {type: "clock"}, {type: "weather"}, {type: "music", player: "Firefox"}]
+  const parsed = model.parseSettings(model.serializeSettings({widgets: cards}))
+  assert.deepEqual(JSON.parse(JSON.stringify(parsed.widgets)), [
+    {type: "music", player: "Spotify"}, {type: "clock", player: ""},
+    {type: "weather", player: ""}, {type: "music", player: "Firefox"}
+  ])
+  assert.equal(model.parseSettings('{}').widgets.length, 0)
+  assert.equal(model.parseSettings('{"widgets":null}').widgets.length, 0)
+  assert.equal(model.normalizeWidgets([null, {}, {type: "unknown"}, {type: "music", player: 12}]).length, 1)
+  assert.equal(model.parseSettings(model.serializeSettings({widgets: Array.from({length: 100}, () => ({type: "clock"}))})).widgets.length, 100)
+})
+
+test("dock size persists, defaults existing settings and bounds invalid values", () => {
+  assert.equal(model.parseSettings('{}').dockScale, 0.9)
+  assert.equal(model.parseSettings(model.serializeSettings({ dockScale: 1.25 })).dockScale, 1.25)
+  assert.equal(model.parseSettings('{"dockScale":0}').dockScale, 0.7)
+  assert.equal(model.parseSettings('{"dockScale":9}').dockScale, 1.4)
+  assert.equal(model.parseSettings('{"dockScale":null}').dockScale, 0.9)
+  assert.equal(model.parseSettings('{"dockScale":"bad"}').dockScale, 0.9)
+})
+
+test("app spacing saves independently and migrates existing settings", () => {
+  const saved = model.parseSettings(model.serializeSettings({ appSpacing: 18, dockScale: 1.25 }))
+  assert.equal(saved.appSpacing, 18)
+  assert.equal(saved.dockScale, 1.25)
+  assert.equal(model.parseSettings('{}').appSpacing, 5)
+  for (const value of [null, "bad"]) assert.equal(model.parseSettings(JSON.stringify({appSpacing: value})).appSpacing, 5)
+  assert.equal(model.parseSettings('{"appSpacing":-5}').appSpacing, 0)
+  assert.equal(model.parseSettings('{"appSpacing":100}').appSpacing, 32)
+  const flow = model.buildFlow(["a", "b", "c"], [], "", -1)
+  const narrow = model.computeLayout(flow, -1, {...model.LAYOUT_OPTS, spacing: 0})
+  const wide = model.computeLayout(flow, -1, {...model.LAYOUT_OPTS, spacing: 20})
+  assert.equal(wide.totalWidth - narrow.totalWidth, 40)
+  assert.equal(wide.placements.b.x - narrow.placements.b.x, 20)
 })

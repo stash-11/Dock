@@ -1,5 +1,6 @@
 import "."
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
@@ -160,6 +161,10 @@ PanelWindow {
           }
 
           Image {
+
+            layer.enabled: String(source).split("?")[0].endsWith("/assets/default-app.svg")
+
+            layer.effect: MultiEffect { colorization: 1; colorizationColor: Color.foreground }
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             width: root.iconSize
@@ -169,13 +174,12 @@ PanelWindow {
             fillMode: Image.PreserveAspectFit
             cache: true
 
-            Text {
-        textFormat: Text.PlainText
+            ThemedIcon {
               anchors.centerIn: parent
               visible: parent.status !== Image.Ready
-              text: "◆"
-              color: Color.foreground
-              font.pixelSize: root.iconSize * 0.42
+              width: root.iconSize * 0.42; height: width
+              source: Qt.resolvedUrl("assets/default-app.svg")
+              sourceSize: Qt.size(48, 48)
             }
           }
 

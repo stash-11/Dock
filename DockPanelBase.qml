@@ -1,5 +1,6 @@
 import "."
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
@@ -27,9 +28,19 @@ Item {
   // reload() path re-reads fresh, and this window skips watcher events that
   // belong to our own save cycles entirely.
   property double ownWriteUntil: 0
-  property real magnification: 1.85
-  property real roundness: 1
-  property real transparency: 0.14
+  property var widgets: []
+  onWidgetsChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
+  property real screenshotMagnification: 1.85
+  onScreenshotMagnificationChanged: { root.applyLayout(); if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart() }
+  property var screenshotLayoutOptions: {
+    var options = Object.assign({}, root.layoutOptions)
+    options.spacing = Math.round(DockModel.LAYOUT_OPTS.spacing * root.dockScale)
+    options.hoverScale = root.screenshotMagnification
+    return options
+  }
+  property real magnification: 1.5
+  property real roundness: 0.3
+  property real transparency: 0.11
   onTransparencyChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
   property string appearanceMode: "theme"
   readonly property color dockBackground: appearanceMode === "theme" ? Color.background : "#242426"
@@ -39,9 +50,13 @@ Item {
   property bool applyingSettings: false
   property var layoutOptions: {
     var options = Object.assign({}, DockModel.LAYOUT_OPTS)
-    options.hoverScale = root.magnification
+    for (var key of ["slotWidth", "spacing", "iconSize", "sidePadding", "separatorWidth", "radius"])
+      options[key] = Math.round(options[key] * root.dockScale)
+    options.spacing = Math.round(root.appSpacing * root.dockScale)
+    options.hoverScale = root.magnificationReady ? root.magnification : 1
     return options
   }
+  onLayoutOptionsChanged: root.applyLayout()
   onMagnificationChanged: { root.applyLayout(); if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart() }
   onRoundnessChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
   Timer { id: appearanceSave; interval: 200; onTriggered: root.saveSettings() }
@@ -70,7 +85,7 @@ Item {
     { id: "region", name: "Region" },
     { id: "back", name: "Back" }
   ]
-  property var screenshotLayout: DockModel.computeLayout(DockModel.buildFlow(["windows", "fullscreen", "region", "back"], [], "", -1), -1, root.layoutOptions)
+  property var screenshotLayout: DockModel.computeLayout(DockModel.buildFlow(["windows", "fullscreen", "region", "back"], [], "", -1), -1, root.screenshotLayoutOptions)
   readonly property real displayedWidth: screenshotMode ? screenshotLayout.totalWidth : layoutWidth
   onScreenshotModeChanged: { root.clearHover(); root.tooltipItem = null; root.applyLayout() }
   property string screenshotOutput: "slurp"
@@ -80,6 +95,39 @@ Item {
   property bool pickerOpen: false
   property bool enabled: true
   property bool dockReady: false
+  property bool startupEntering: true
+  property bool magnificationReady: false
+  property bool startupDataReady: false
+  // Do not expose hover magnification until the app index and pin state have
+  // both arrived, otherwise late entries make the first layout jump.
+  Timer {
+    id: startupReadyTimer
+    interval: 40
+    repeat: true
+    running: !root.startupDataReady
+    onTriggered: {
+      if (!root.appLibraryReady || !root.pinFileLoaded || !root.dockItems.length) return
+      root.startupDataReady = true
+      root.magnificationReady = true
+      root.dockReady = true
+      root.applyLayout()
+      stop()
+      startupRevealTimer.restart()
+    }
+  }
+
+  // Let the layer surface receive its real screen geometry before moving it
+  // onscreen. Without this settle period the initial y binding can be applied
+  // before mapping and the first-load slide is skipped by the compositor.
+  Timer {
+    id: startupRevealTimer
+    interval: 220
+    repeat: false
+    onTriggered: {
+      root.startupEntering = false
+      root.applyLayout()
+    }
+  }
   // Layer-shell remap pulse. When Hyprland destroys our outputs (suspend,
   // DPMS off, cable disconnect) the compositor closes our layer surfaces, but
   // static PanelWindows with unchanged `visible == true` are never re-mapped
@@ -132,16 +180,16 @@ Item {
   property int peekPx: 0
   // Hide is suppressed while any transient UI is active so the dock does not
   // vanish under a menu, preview, picker or drag.
-  property bool hideSuppressed: root.screenshotMode || root.menuOpen || root.pickerOpen || root.previewVisible || root.floatingId !== "" || !!(root.altTab && root.altTab.active)
+  property bool hideSuppressed: widgetStack.engaged || root.screenshotMode || root.menuOpen || root.pickerOpen || root.previewVisible || root.floatingId !== "" || !!(root.altTab && root.altTab.active)
   property bool edgeHovered: false
   // Combined engagement — dockHovered OR edgeHovered. While true, hide is
   // suppressed and must not be scheduled. Extracted to avoid the fragile 5px
   // gap between dockSurface bottom (H-8) and edge strip (H-3).
-  property bool dockEngaged: root.dockHovered || root.edgeHovered
+  property bool dockEngaged: root.dockHovered || root.edgeHovered || widgetStack.engaged
   // Slide state for auto-hide. The PanelWindow stays mapped when enabled;
   // this flag drives the bottomMargin translation so the glide is animated.
   property bool autoHidden: false
-  property int dockHeight: 101
+  property int dockHeight: Math.round(101 * root.dockScale)
   property int bottomMargin: 8
   // Dock geometry is computed in screen coordinates (dockWindow fills the
   // screen) instead of conditional anchors. Switching sides cannot leave a
@@ -156,10 +204,14 @@ Item {
     return (dockWindow.width - root.surfaceWidth) / 2
   }
   property real surfaceY: {
-    if (root.dockSide === "bottom") return dockWindow.height - root.surfaceHeight - root.bottomMargin + root.hideShift
+    if (root.dockSide === "bottom") return dockWindow.height - root.surfaceHeight - root.bottomMargin + root.hideShift + (root.startupEntering ? root.surfaceHeight + root.bottomMargin : 0)
     return (dockWindow.height - root.surfaceHeight) / 2
   }
-  property int iconSize: 50
+  property int appSpacing: 5
+  onAppSpacingChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
+  property real dockScale: 0.9
+  onDockScaleChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
+  property int iconSize: Math.round(50 * root.dockScale)
   property real hoveredMouseX: -1
   property string hoveredItemId: ""
   property var tooltipItem: null
@@ -190,10 +242,10 @@ Item {
   // applyLayout(), which only mutates existing delegates, so no delegate is
   // ever torn down by dragging. Mutable pinned/running state lives in each
   // delegate's liveData binding so state changes never rebuild the Repeater.
-  property int slotWidth: 58
-  property int slotSpacing: 8
-  property int sidePadding: 18
-  property int separatorWidth: 14
+  property int slotWidth: Math.round(58 * root.dockScale)
+  property int slotSpacing: Math.round(root.appSpacing * root.dockScale)
+  property int sidePadding: Math.round(18 * root.dockScale)
+  property int separatorWidth: Math.round(14 * root.dockScale)
   property string floatingId: ""
   property var tempDrag: ({ id: "", index: -1 })
   property var placements: ({})
@@ -270,7 +322,7 @@ Item {
 
   function saveSettings() {
     if (root.applyingSettings) return
-    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness, appearanceMode: root.appearanceMode, transparency: root.transparency, screenshotOutput: root.screenshotOutput })
+    var content = DockModel.serializeSettings({ appSpacing: root.appSpacing, dockScale: root.dockScale, widgets: root.widgets, autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, screenshotMagnification: root.screenshotMagnification, roundness: root.roundness, appearanceMode: root.appearanceMode, transparency: root.transparency, screenshotOutput: root.screenshotOutput })
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
     // settingsFile uses atomicWrites: setText writes to a sibling temp and
@@ -646,7 +698,7 @@ Item {
     var cursorX = root.cursorXInRow()
     if (root.screenshotMode) {
       root.screenshotLayout = DockModel.computeLayout(
-        DockModel.buildFlow(["windows", "fullscreen", "region", "back"], [], "", -1), cursorX, root.layoutOptions)
+        DockModel.buildFlow(["windows", "fullscreen", "region", "back"], [], "", -1), cursorX, root.screenshotLayoutOptions)
       return
     }
     var baseFlow = DockModel.buildFlow(root.dockOrder, [], root.floatingId, -1)
@@ -1074,7 +1126,7 @@ Item {
         // instantly at full opacity exactly where the ghost was, and applyLayout
         // then assigns the identical x, so no spring runs.
         var dropFlow = DockModel.buildFlow(newOrder, [], "", -1)
-        var dropResult = DockModel.computeLayout(dropFlow, root.cursorXInRow(), DockModel.LAYOUT_OPTS)
+        var dropResult = DockModel.computeLayout(dropFlow, root.cursorXInRow(), root.layoutOptions)
         var dropP = dropResult.placements[id]
         var dropDelegate = root.delegateById[id]
         if (dropP && dropDelegate) {
@@ -1377,7 +1429,7 @@ Item {
   }
 
   function defaultIconSource() {
-    return Util.fileUrl(root.home + "/.config/omarchy/plugins/io.github.stash-11.dock/assets/" + IconResolver.DEFAULT_ICON_ASSET)
+    return Qt.resolvedUrl("assets/" + IconResolver.DEFAULT_ICON_ASSET)
   }
 
   // Theme icons carry their own transparent margin (often only 70-95% painted
@@ -1525,7 +1577,11 @@ Item {
         root.autoHide = parsed.autoHide
       }
       root.applyingSettings = true
+      root.appSpacing = parsed.appSpacing
+      root.dockScale = parsed.dockScale
+      root.widgets = parsed.widgets
       root.magnification = parsed.magnification
+      root.screenshotMagnification = parsed.screenshotMagnification
       root.roundness = parsed.roundness
       root.transparency = parsed.transparency
       root.appearanceMode = parsed.appearanceMode
@@ -1676,7 +1732,8 @@ Item {
     // the eval on a short retry window until the config binds have landed;
     // the eval is idempotent (unbind then bind).
     altTabBindRetry.start()
-    Qt.callLater(function() { root.dockReady = true })
+    // startupReadyTimer marks the dock ready after app and pin data arrive,
+    // then releases the one-time bottom entry and magnification.
   }
 
   Process {
@@ -1779,10 +1836,10 @@ Item {
       Item {
         id: screenshotRow
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 6
+        anchors.verticalCenterOffset: 6 * root.dockScale
         visible: root.screenshotMode
         width: root.screenshotLayout.totalWidth - 2 * root.sidePadding
-        height: 70
+        height: Math.round(70 * root.dockScale)
         rotation: root.vertical ? -90 : 0
         Repeater {
           model: root.screenshotItems
@@ -1790,7 +1847,7 @@ Item {
             required property var modelData
             property var placement: root.screenshotLayout.placements[modelData.id]
             width: root.slotWidth * captureItem.scale
-            height: 70
+            height: Math.round(70 * root.dockScale)
             x: placement ? placement.x : 0
             rotation: root.vertical ? 90 : 0
             Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
@@ -1798,6 +1855,7 @@ Item {
               id: captureItem
               anchors.centerIn: parent
               itemData: modelData
+              monochromeIcon: true
               iconSourceOverride: Qt.resolvedUrl("assets/screenshot-" + modelData.id + ".svg")
               iconSize: root.iconSize
               dockSide: root.dockSide
@@ -1831,9 +1889,9 @@ Item {
         id: dockRow
         visible: !root.screenshotMode
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 6
+        anchors.verticalCenterOffset: 6 * root.dockScale
         width: root.layoutWidth - 2 * root.sidePadding
-        height: 70
+        height: Math.round(70 * root.dockScale)
         // Left/right docks reuse the horizontal layout engine: the row is
         // rotated -90° so the x-axis becomes screen-y (first item on top) and
         // each wrapper counter-rotates +90° to keep icons upright.
@@ -1855,7 +1913,7 @@ Item {
             // the slot's visual center — a single magnified icon stays
             // centered in the dock instead of drifting left.
             width: root.slotWidth * dockItem.scale
-            height: 70
+            height: Math.round(70 * root.dockScale)
             x: 0
             rotation: root.vertical ? 90 : 0
             property bool animating: false
@@ -2040,13 +2098,45 @@ Item {
     }
   }
 
+  WidgetStack {
+    id: widgetStack
+    screen: dockWindow.screen
+    available: root.enabled && root.dockReady && !root.conflictDetected && !root.remapping && !root.screenshotActive && !root.screenshotMode && !root.vertical && (!root.autoHidden || expanded)
+    cards: root.widgets
+    dockX: root.surfaceX
+    dockY: root.surfaceY
+    dockHeight: root.surfaceHeight
+    paletteBackground: root.dockBackground
+    paletteForeground: root.dockForeground
+    paletteAccent: root.dockAccent
+    onCardsAdjusted: function(value) { root.widgets = DockModel.normalizeWidgets(value) }
+  }
+
   DockMenu {
     id: dockMenu
+    onAppearanceResetRequested: {
+      var defaults = DockModel.parseSettings("{}")
+      root.dockScale = defaults.dockScale
+      root.appSpacing = defaults.appSpacing
+      root.magnification = defaults.magnification
+      root.roundness = defaults.roundness
+      root.transparency = defaults.transparency
+      root.appearanceMode = defaults.appearanceMode
+    }
+    appSpacing: root.appSpacing
+    onAppSpacingAdjusted: function(value) { root.appSpacing = value }
+    dockScale: root.dockScale
+    onDockScaleAdjusted: function(value) { root.dockScale = value }
+    pluginId: root.manifest && root.manifest.id ? root.manifest.id : "io.github.stash-11.dock"
+    widgets: root.widgets
+    onWidgetsAdjusted: function(value) { root.widgets = DockModel.normalizeWidgets(value) }
     version: root.manifest && root.manifest.version ? root.manifest.version : "1.0.0"
     screenshotOutput: root.screenshotOutput
     onScreenshotOutputAdjusted: function(value) { root.screenshotOutput = value }
     autoHideEnabled: root.autoHide
     magnification: root.magnification
+    screenshotMagnification: root.screenshotMagnification
+    onScreenshotMagnificationAdjusted: function(value) { root.screenshotMagnification = value }
     roundness: root.roundness
     transparency: root.transparency
     onTransparencyAdjusted: function(value) { root.transparency = value }
@@ -2062,6 +2152,9 @@ Item {
 
   IconPickerPanel {
     id: iconPicker
+    paletteBackground: root.dockBackground
+    paletteForeground: root.dockForeground
+    paletteAccent: root.dockAccent
     shell: root.shell
     customIcons: root.customIcons
     iconSourceFor: function(id) { return root.iconSourceFor(id) }
@@ -2292,6 +2385,10 @@ Item {
       }
 
       Image {
+
+        layer.enabled: String(source).split("?")[0].endsWith("/assets/default-app.svg")
+
+        layer.effect: MultiEffect { colorization: 1; colorizationColor: root.dockForeground }
         anchors.centerIn: parent
         width: root.iconSize * root.ghostScale
         height: root.iconSize * root.ghostScale

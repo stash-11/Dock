@@ -33,7 +33,8 @@ Dock Options and Appearance. The settings page includes Theme or Default
 colors, magnification, rounded corners, transparency, auto-hide, and dock
 placement. Settings use a sidebar with Dock Behavior, Appearance, Screenshots,
 Shortcuts, and About pages. Screenshots can save to a file, the clipboard, or
-both; this preference also applies to the capture dock. Open settings directly
+both; this preference also applies to the capture dock. Screenshots also has a separate
+magnification slider (Off–2.5×). Bundled UI icons follow the selected theme. Open settings directly
 with `omarchy-shell io.github.stash-11.dock settings` (use `macos.dock` for legacy
 installations).
 
@@ -57,6 +58,23 @@ capture starts and returns to apps afterward. **Back** restores the apps without
 keeps the screenshot controls open. Omarchy handles selection, saving, and
 clipboard copying.
 
+## Widgets and shortcuts
+
+Settings → Shortcuts shows the screenshot IPC command for the installed plugin
+ID and a Run button that opens the capture dock.
+
+Settings → Widgets lets you add and remove Music, Clock, and Weather cards.
+Cards share one compact stack to the left of the bottom dock; they never change
+the app dock's dimensions. Click to expand, use arrows or scroll to change cards,
+and click Collapse or press Escape to close. The stack is hidden for side-mounted
+docks and during screenshots. There is no fixed card-count limit.
+
+Music cards use MPRIS-compatible players; click Player to cycle through available
+players or Automatic. Clock uses local time. Weather uses `omarchy-weather-status`
+with the configured Omarchy location, refreshing every 15 minutes while a weather
+card is configured. It contacts the weather service only when a weather card is
+added; failed requests show an unavailable message and can be retried.
+
 ## Requirements and dependencies
 
 The plugin requires Omarchy Quickshell with the `qs.Commons` and `qs.Ui`
@@ -66,8 +84,8 @@ The optional icon helper additionally uses Bash, Python 3, curl, ImageMagick
 
 The helper can download icon files only when the user explicitly requests an
 icon search or URL. Downloaded icons and mappings are stored under the user's
-Omarchy configuration. The plugin does not collect telemetry or contact a
-remote service during normal dock operation.
+Omarchy configuration. The plugin does not collect telemetry. Optional Weather cards contact the
+weather service through Omarchy while configured.
 
 ## Removal
 

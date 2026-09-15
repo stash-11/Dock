@@ -1,5 +1,6 @@
 import "."
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Controls.Basic as Controls
 import Quickshell
 import Quickshell.Wayland
@@ -15,20 +16,30 @@ PanelWindow {
   property bool settingsPage: false
   property string settingsSection: "appearance"
   property string screenshotOutput: "slurp"
+  property string pluginId: "io.github.stash-11.dock"
+  property var widgets: []
+  signal widgetsAdjusted(var value)
   property string version: "1.0.0"
   signal screenshotOutputAdjusted(string value)
   onOpenedChanged: if (!opened) settingsPage = false
   property point requestedPosition: Qt.point(0, 0)
   property bool autoHideEnabled: true
   property string dockSide: "bottom"
-  property real magnification: 1.85
-  property real roundness: 1
-  property real transparency: 0.14
+  property real screenshotMagnification: 1.85
+  signal screenshotMagnificationAdjusted(real value)
+  property real magnification: 1.5
+  property real roundness: 0.3
+  property real transparency: 0.11
   signal transparencyAdjusted(real value)
+  property int appSpacing: 5
+  signal appSpacingAdjusted(int value)
+  property real dockScale: 0.9
+  signal dockScaleAdjusted(real value)
   property string appearanceMode: "theme"
   readonly property color paletteBackground: appearanceMode === "theme" ? Color.background : "#242426"
   readonly property color paletteForeground: appearanceMode === "theme" ? Color.foreground : "#f5f5f7"
   readonly property color paletteAccent: appearanceMode === "theme" ? Color.accent : "#0a84ff"
+  signal appearanceResetRequested()
   signal appearanceModeAdjusted(string value)
   signal magnificationAdjusted(real value)
   signal roundnessAdjusted(real value)
@@ -72,6 +83,10 @@ PanelWindow {
           color: Util.alpha(root.paletteForeground, 0.08)
 
           Image {
+
+            layer.enabled: String(source).split("?")[0].endsWith("/assets/default-app.svg")
+
+            layer.effect: MultiEffect { colorization: 1; colorizationColor: root.paletteForeground }
             id: appIcon
             anchors.centerIn: parent
             width: 48
@@ -81,7 +96,8 @@ PanelWindow {
             fillMode: Image.PreserveAspectFit
             visible: !root.settingsPage && status === Image.Ready
           }
-          Image {
+          ThemedIcon {
+            iconColor: root.paletteForeground
             anchors.centerIn: parent
             width: 32; height: 32
             source: Qt.resolvedUrl("assets/settings.svg")
@@ -127,7 +143,8 @@ PanelWindow {
           color: settingsMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.12) : "transparent"
           Accessible.role: Accessible.Button
           Accessible.name: root.settingsPage ? "Back to application actions" : "Dock settings"
-          Image {
+          ThemedIcon {
+            iconColor: root.paletteForeground
             anchors.centerIn: parent
             width: 22; height: 22
             source: Qt.resolvedUrl(root.settingsPage ? "assets/back.svg" : "assets/settings.svg")
@@ -152,7 +169,8 @@ PanelWindow {
           color: closeMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.12) : "transparent"
           Accessible.role: Accessible.Button
           Accessible.name: "Close"
-          Image {
+          ThemedIcon {
+            iconColor: root.paletteForeground
             anchors.centerIn: parent
             width: 22; height: 22
             source: Qt.resolvedUrl("assets/close.svg")
@@ -182,10 +200,10 @@ PanelWindow {
 
         Repeater {
           model: [
-            { action: "setIcon", label: "Get Info", glyph: "✦", detail: "Change icon" },
-            { action: "togglePin", label: root.itemData && root.itemData.pinned ? "Unpin" : "Pin", glyph: "⌖", detail: "Dock placement" },
-            { action: "newWindow", label: "New Window", glyph: "＋", detail: "Open another" },
-            { action: "manageIcons", label: "Manage Icons", glyph: "▦", detail: "Browse apps" }
+            { action: "setIcon", label: "Get Info", icon: "info.svg", detail: "Change icon" },
+            { action: "togglePin", label: root.itemData && root.itemData.pinned ? "Unpin" : "Pin", icon: root.itemData && root.itemData.pinned ? "unpin.svg" : "pin.svg", detail: "Dock placement" },
+            { action: "newWindow", label: "New Window", icon: "new-window.svg", detail: "Open another" },
+            { action: "manageIcons", label: "Manage Icons", icon: "manage-icons.svg", detail: "Browse apps" }
           ]
           delegate: Rectangle {
             required property var modelData
@@ -199,11 +217,13 @@ PanelWindow {
             Column {
               anchors.centerIn: parent
               spacing: 8
-              Text {
+              ThemedIcon {
+                iconColor: actionMouse.containsMouse ? root.paletteAccent : root.paletteForeground
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: modelData.glyph
-                color: actionMouse.containsMouse ? root.paletteAccent : root.paletteForeground
-                font.pixelSize: 24
+                width: 24; height: 24
+                source: Qt.resolvedUrl("assets/" + modelData.icon)
+                sourceSize: Qt.size(48, 48)
+                opacity: actionMouse.containsMouse ? 1 : 0.85
               }
               Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -257,17 +277,19 @@ PanelWindow {
         }
         Repeater {
           model: [
-            { key: "dock", title: "Dock Behavior", icon: "screenshot-fullscreen.svg" },
-            { key: "appearance", title: "Appearance", icon: "settings.svg" },
+            { key: "dock", title: "Dock Behavior", icon: "dock.svg" },
+            { key: "appearance", title: "Appearance", icon: "palette.svg" },
             { key: "screenshots", title: "Screenshots", icon: "screenshot-region.svg" },
-            { key: "shortcuts", title: "Shortcuts", icon: "screenshot-windows.svg" },
-            { key: "about", title: "About", icon: "default-app.svg" }
+            { key: "widgets", title: "Widgets", icon: "widgets.svg" },
+            { key: "shortcuts", title: "Shortcuts", icon: "keyboard.svg" },
+            { key: "about", title: "About", icon: "info.svg" }
           ]
           delegate: Rectangle {
             required property var modelData
             width: 190; height: 42; radius: 8
             color: root.settingsSection === modelData.key ? root.paletteAccent : sidebarMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.07) : "transparent"
-            Image {
+            ThemedIcon {
+              iconColor: root.settingsSection === modelData.key ? "white" : root.paletteForeground
               x: 10; anchors.verticalCenter: parent.verticalCenter
               width: 26; height: 26; source: Qt.resolvedUrl("assets/" + modelData.icon)
               sourceSize: Qt.size(52, 52)
@@ -325,6 +347,22 @@ PanelWindow {
         }
         AppearanceControl {
           width: parent.width
+          label: "Dock Size"
+          valueText: Math.round(root.dockScale * 100) + "%"
+          from: 0.7; to: 1.4; stepSize: 0.05
+          value: root.dockScale
+          onAdjusted: function(value) { root.dockScaleAdjusted(value) }
+        }
+        AppearanceControl {
+          width: parent.width
+          label: "App Spacing"
+          valueText: Math.round(root.appSpacing * root.dockScale) + " px"
+          from: 0; to: 32; stepSize: 1
+          value: root.appSpacing
+          onAdjusted: function(value) { root.appSpacingAdjusted(Math.round(value)) }
+        }
+        AppearanceControl {
+          width: parent.width
           label: "Magnification"
           valueText: root.magnification <= 1 ? "Off" : root.magnification.toFixed(2) + "×"
           from: 1; to: 2.5; stepSize: 0.05
@@ -347,6 +385,12 @@ PanelWindow {
           value: root.transparency
           onAdjusted: function(value) { root.transparencyAdjusted(value) }
         }
+        UtilityButton {
+          label: "Reset to Defaults"
+          action: "resetAppearance"
+          width: 168
+        }
+        SettingsText { text: "Restore default size, app spacing, magnification, corners, transparency, and theme colors." }
       }
           Column {
             visible: root.settingsSection === "dock"
@@ -378,6 +422,14 @@ PanelWindow {
               UtilityButton { label: "Full Screen"; action: "screenshot:fullscreen"; width: 110 }
               UtilityButton { label: "Region"; action: "screenshot:region"; width: 104 }
             }
+            AppearanceControl {
+              width: parent.width
+              label: "Capture dock magnification"
+              valueText: root.screenshotMagnification <= 1 ? "Off" : root.screenshotMagnification.toFixed(2) + "×"
+              from: 1; to: 2.5; stepSize: 0.05
+              value: root.screenshotMagnification
+              onAdjusted: function(value) { root.screenshotMagnificationAdjusted(value) }
+            }
             SettingsText { text: "Save screenshots to" }
             Row {
               spacing: 8
@@ -392,6 +444,16 @@ PanelWindow {
             visible: root.settingsSection === "shortcuts"
             width: parent.width; spacing: 18
             SectionTitle { text: "Shortcuts" }
+            SettingsText { text: "Screenshot IPC command" }
+            Controls.TextField {
+              width: parent.width
+              readOnly: true; selectByMouse: true
+              text: "omarchy-shell " + root.pluginId + " screenshot"
+              color: root.paletteForeground
+              font.pixelSize: 12
+              background: Rectangle { radius: 8; color: Util.alpha(root.paletteForeground, 0.06) }
+            }
+            UtilityButton { label: "Run screenshot IPC"; action: "showScreenshotDock"; width: 172 }
             SettingsText { text: "Use these shortcuts to move between applications." }
             Repeater {
               model: [
@@ -409,9 +471,41 @@ PanelWindow {
             }
           }
           Column {
+            visible: root.settingsSection === "widgets"
+            width: parent.width; spacing: 14
+            SectionTitle { text: "Widgets" }
+            SettingsText { text: "Add cards to one stack on the left of the bottom dock. The app dock keeps its size. Click the stack to expand; scroll or use arrows to switch cards." }
+            Row {
+              spacing: 8
+              UtilityButton { label: "Add Music"; action: "widget:add:music"; width: 104 }
+              UtilityButton { label: "Add Clock"; action: "widget:add:clock"; width: 104 }
+              UtilityButton { label: "Add Weather"; action: "widget:add:weather"; width: 116 }
+            }
+            SettingsText { text: root.widgets.length ? root.widgets.length + " cards in one stack" : "No widgets added yet." }
+            SettingsText { text: "Music controls compatible media players. Weather uses your Omarchy location and refreshes every 15 minutes." }
+            Repeater {
+              model: root.widgets
+              delegate: SettingsBox {
+                required property var modelData
+                required property int index
+                width: settingsContent.width; height: 48
+                Text {
+                  x: 14; anchors.verticalCenter: parent.verticalCenter
+                  text: (index + 1) + ". " + modelData.type.charAt(0).toUpperCase() + modelData.type.slice(1)
+                  color: root.paletteForeground; font.family: Style.font.family
+                }
+                UtilityButton {
+                  anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
+                  label: "Remove"; action: "widget:remove:" + index; width: 80
+                }
+              }
+            }
+          }
+          Column {
             visible: root.settingsSection === "about"
             width: parent.width; spacing: 18
-            Image { width: 76; height: 76; source: Qt.resolvedUrl("assets/default-app.svg"); sourceSize: Qt.size(152, 152) }
+            ThemedIcon {
+            iconColor: root.paletteForeground; width: 76; height: 76; source: Qt.resolvedUrl("assets/dock.svg"); sourceSize: Qt.size(152, 152) }
             SectionTitle { text: "My Dock" }
             SettingsText { text: "Version " + root.version + " · by stash-11" }
             SettingsText { text: "A macOS-inspired dock for Omarchy, with app switching, custom icons, magnification, and screenshot controls." }
@@ -569,7 +663,18 @@ PanelWindow {
       anchors.fill: parent
       hoverEnabled: true
       onClicked: {
-        if (action === "appearanceTheme") root.appearanceModeAdjusted("theme")
+        if (action.indexOf("widget:add:") === 0) {
+          var added = root.widgets.slice()
+          added.push({ type: action.slice(11), player: "" })
+          root.widgetsAdjusted(added)
+        }
+        else if (action.indexOf("widget:remove:") === 0) {
+          var remaining = root.widgets.slice()
+          remaining.splice(Number(action.slice(14)), 1)
+          root.widgetsAdjusted(remaining)
+        }
+        else if (action === "resetAppearance") root.appearanceResetRequested()
+        else if (action === "appearanceTheme") root.appearanceModeAdjusted("theme")
         else if (action === "appearanceDefault") root.appearanceModeAdjusted("default")
         else if (action.indexOf("output:") === 0) root.screenshotOutputAdjusted(action.slice(7))
         else if (action === "closeSettings") root.opened = false

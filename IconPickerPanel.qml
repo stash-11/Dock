@@ -32,6 +32,9 @@ PanelWindow {
   property var iconSourceFor: function(id) { return "" }
   property string helperPath: ""
   property var shell: null
+  property color paletteBackground: Color.background
+  property color paletteForeground: Color.foreground
+  property color paletteAccent: Color.accent
 
   property var results: []
   property var appRows: []
@@ -55,7 +58,12 @@ PanelWindow {
   function previewSource(id) {
     var source = root.iconSourceFor(id)
     if (!source) return ""
-    return String(source) + "?v=" + root.appliedRevision
+    // Custom file URLs already carry their own revision; provider URLs
+    // must remain intact so their icon identifier is not changed.
+    var revision = root.appliedRevision
+    var url = String(source)
+    if (url.indexOf("file:") !== 0 || url.indexOf("?") !== -1) return url
+    return url + "?v=" + revision
   }
 
   function openForApp(appId, appName, fromManage, fromDockMenu) {
@@ -337,8 +345,8 @@ PanelWindow {
     width: 760
     height: root.mode === "manage" ? 600 : 540
     radius: 18
-    color: Util.alpha(Color.background, 0.97)
-    border.color: Util.alpha(Color.foreground, 0.18)
+    color: Util.alpha(root.paletteBackground, 0.97)
+    border.color: Util.alpha(root.paletteForeground, 0.18)
     border.width: 1
 
     Item {
@@ -364,7 +372,7 @@ PanelWindow {
             height: 48
             anchors.left: parent.left
             radius: 12
-            color: Util.alpha(Color.foreground, 0.07)
+            color: Util.alpha(root.paletteForeground, 0.07)
             visible: root.mode === "picker"
 
             Image {
@@ -377,13 +385,13 @@ PanelWindow {
               fillMode: Image.PreserveAspectFit
               cache: true
 
-              Text {
-        textFormat: Text.PlainText
+              ThemedIcon {
+                iconColor: root.paletteForeground
                 anchors.centerIn: parent
-                visible: parent.status !== Image.Ready
-                text: "◆"
-                color: Color.foreground
-                font.pixelSize: 18
+                visible: parent.status !== Image.Ready || String(parent.source).split("?")[0].endsWith("/assets/default-app.svg")
+                width: 18; height: width
+                source: Qt.resolvedUrl("assets/default-app.svg")
+                sourceSize: Qt.size(48, 48)
               }
             }
           }
@@ -400,7 +408,7 @@ PanelWindow {
               width: parent.width
               text: root.mode === "picker" ? root.currentAppName : "Icon Manager"
               elide: Text.ElideRight
-              color: Color.foreground
+              color: root.paletteForeground
               font.family: Style.font.family
               font.pixelSize: Style.font.title
               font.bold: true
@@ -412,7 +420,7 @@ PanelWindow {
                 ? "Change the icon shown for this app"
                 : "Change icons for any installed app"
               elide: Text.ElideRight
-              color: Qt.darker(Color.foreground, 1.5)
+              color: Qt.darker(root.paletteForeground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
             }
@@ -424,7 +432,7 @@ PanelWindow {
             width: 108
             height: 34
             radius: 8
-            color: backMouse.containsMouse ? Util.alpha(Color.foreground, 0.10) : "transparent"
+            color: backMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.10) : "transparent"
             visible: (root.mode === "picker" && (root.fromManage || root.fromDockMenu)) || (root.mode === "manage" && root.fromDockMenu)
             anchors.right: closeButton.left
             anchors.rightMargin: 12
@@ -433,7 +441,7 @@ PanelWindow {
         textFormat: Text.PlainText
               anchors.centerIn: parent
               text: root.fromManage ? "‹ All apps" : "‹ Dock menu"
-              color: Color.foreground
+              color: root.paletteForeground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
             }
@@ -460,15 +468,14 @@ PanelWindow {
             width: 36
             height: 36
             radius: 10
-            color: closeMouse.containsMouse ? Util.alpha(Color.foreground, 0.10) : "transparent"
+            color: closeMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.10) : "transparent"
 
-            Text {
-        textFormat: Text.PlainText
+            ThemedIcon {
+                iconColor: root.paletteForeground
               anchors.centerIn: parent
-              text: "✕"
-              color: Color.foreground
-              font.family: Style.font.family
-              font.pixelSize: 18
+              width: 18; height: 18
+              source: Qt.resolvedUrl("assets/close.svg")
+              sourceSize: Qt.size(36, 36)
             }
             MouseArea {
               id: closeMouse
@@ -485,18 +492,18 @@ PanelWindow {
           width: parent.width
           height: 38
           radius: 10
-          color: Util.alpha(Color.foreground, 0.06)
-          border.color: Util.alpha(Color.foreground, 0.12)
+          color: Util.alpha(root.paletteForeground, 0.06)
+          border.color: Util.alpha(root.paletteForeground, 0.12)
           border.width: 1
 
-          Text {
-        textFormat: Text.PlainText
+          ThemedIcon {
+                iconColor: root.paletteForeground
             anchors.left: parent.left
             anchors.leftMargin: 12
             anchors.verticalCenter: parent.verticalCenter
-            text: root.mode === "picker" ? "🔍" : "🔎"
-            color: Qt.darker(Color.foreground, 1.4)
-            font.pixelSize: 14
+            width: 16; height: 16
+            source: Qt.resolvedUrl("assets/search.svg")
+            sourceSize: Qt.size(32, 32)
           }
 
           TextField {
@@ -508,8 +515,8 @@ PanelWindow {
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
             placeholderText: "Search macOSicons"
-            placeholderTextColor: Qt.darker(Color.foreground, 1.6)
-            color: Color.foreground
+            placeholderTextColor: Qt.darker(root.paletteForeground, 1.6)
+            color: root.paletteForeground
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             background: Item {}
@@ -526,8 +533,8 @@ PanelWindow {
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
             placeholderText: "Search installed apps"
-            placeholderTextColor: Qt.darker(Color.foreground, 1.6)
-            color: Color.foreground
+            placeholderTextColor: Qt.darker(root.paletteForeground, 1.6)
+            color: root.paletteForeground
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             background: Item {}
@@ -541,7 +548,7 @@ PanelWindow {
           width: parent.width
           height: 34
           radius: 10
-          color: Util.alpha(Color.foreground, 0.05)
+          color: Util.alpha(root.paletteForeground, 0.05)
           visible: root.pasteVisible && root.mode === "picker"
 
           TextField {
@@ -552,8 +559,8 @@ PanelWindow {
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
             placeholderText: "https:// direct PNG or WebP image URL"
-            placeholderTextColor: Qt.darker(Color.foreground, 1.6)
-            color: Color.foreground
+            placeholderTextColor: Qt.darker(root.paletteForeground, 1.6)
+            color: root.paletteForeground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             background: Item {}
@@ -568,12 +575,12 @@ PanelWindow {
             width: 64
             height: 26
             radius: 8
-            color: pasteApplyMouse.containsMouse ? Util.alpha(Color.accent, 0.85) : Util.alpha(Color.accent, 0.7)
+            color: pasteApplyMouse.containsMouse ? Util.alpha(root.paletteAccent, 0.85) : Util.alpha(root.paletteAccent, 0.7)
             Text {
         textFormat: Text.PlainText
               anchors.centerIn: parent
               text: "Apply"
-              color: Color.background
+              color: root.paletteBackground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
             }
@@ -611,7 +618,7 @@ PanelWindow {
               width: root.gridCell
               height: root.gridCell
               radius: 12
-              color: gridMouse.containsMouse ? Util.alpha(Color.foreground, 0.10) : "transparent"
+              color: gridMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.10) : "transparent"
 
               Column {
                 anchors.fill: parent
@@ -623,7 +630,7 @@ PanelWindow {
                   width: 76
                   height: 76
                   radius: 16
-                  color: Util.alpha(Color.foreground, 0.06)
+                  color: Util.alpha(root.paletteForeground, 0.06)
 
                   LoadingSpinner {
                     anchors.centerIn: parent
@@ -650,7 +657,7 @@ PanelWindow {
                   text: modelData.appName || "icon"
                   horizontalAlignment: Text.AlignHCenter
                   elide: Text.ElideRight
-                  color: Color.foreground
+                  color: root.paletteForeground
                   font.family: Style.font.family
                   font.pixelSize: Style.font.bodySmall
                 }
@@ -670,7 +677,7 @@ PanelWindow {
               anchors.centerIn: parent
               visible: root.results.length === 0 && root.statusText === ""
               text: "Type to search macOSicons"
-              color: Qt.darker(Color.foreground, 1.5)
+              color: Qt.darker(root.paletteForeground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.body
             }
@@ -687,7 +694,7 @@ PanelWindow {
             }
             Text {
               text: "Loading icons…"
-              color: Color.foreground
+              color: root.paletteForeground
               font.family: Style.font.family
               font.pixelSize: Style.font.body
             }
@@ -708,7 +715,7 @@ PanelWindow {
               width: ListView.view.width
               height: 52
               radius: 10
-              color: rowMouse.containsMouse ? Util.alpha(Color.foreground, 0.08) : (index % 2 === 1 ? Util.alpha(Color.foreground, 0.03) : "transparent")
+              color: rowMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.08) : (index % 2 === 1 ? Util.alpha(root.paletteForeground, 0.03) : "transparent")
 
               Image {
                 id: rowIcon
@@ -722,6 +729,12 @@ PanelWindow {
                 fillMode: Image.PreserveAspectFit
                 cache: true
                 asynchronous: true
+                ThemedIcon {
+                  anchors.fill: parent
+                  iconColor: root.paletteForeground
+                  visible: parent.status !== Image.Ready || String(parent.source).split("?")[0].endsWith("/assets/default-app.svg")
+                  source: Qt.resolvedUrl("assets/default-app.svg")
+                }
               }
 
               Text {
@@ -731,7 +744,7 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 text: modelData.name
                 elide: Text.ElideRight
-                color: Color.foreground
+                color: root.paletteForeground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body
               }
@@ -746,12 +759,12 @@ PanelWindow {
                   width: 70
                   height: 28
                   radius: 8
-                  color: changeMouse.containsMouse ? Util.alpha(Color.foreground, 0.16) : Util.alpha(Color.foreground, 0.08)
+                  color: changeMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.16) : Util.alpha(root.paletteForeground, 0.08)
                   Text {
         textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: "Change"
-                    color: Color.foreground
+                    color: root.paletteForeground
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
                   }
@@ -768,13 +781,13 @@ PanelWindow {
                   width: 56
                   height: 28
                   radius: 8
-                  color: clearMouse.containsMouse ? Util.alpha(Color.foreground, 0.16) : Util.alpha(Color.foreground, 0.08)
+                  color: clearMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.16) : Util.alpha(root.paletteForeground, 0.08)
                   visible: root.appHasCustomIcon(modelData.id)
                   Text {
         textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: "Clear"
-                    color: Color.foreground
+                    color: root.paletteForeground
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
                   }
@@ -802,7 +815,7 @@ PanelWindow {
               anchors.centerIn: parent
               visible: root.appRows.length === 0
               text: String(appsField.text).trim() !== "" ? "No apps match" : "No applications found"
-              color: Qt.darker(Color.foreground, 1.5)
+              color: Qt.darker(root.paletteForeground, 1.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.body
             }
@@ -859,7 +872,7 @@ PanelWindow {
             width: parent.width
             text: root.mode === "picker" && root.searchLoading ? "Loading icons…" : root.statusText
             elide: Text.ElideRight
-            color: Qt.darker(Color.foreground, 1.5)
+            color: Qt.darker(root.paletteForeground, 1.5)
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
           }
@@ -879,7 +892,7 @@ PanelWindow {
           width: 4; height: 4; radius: 2
           x: parent.width / 2 - width / 2 + Math.cos(index * Math.PI / 4) * (parent.width / 2 - 3)
           y: parent.height / 2 - height / 2 + Math.sin(index * Math.PI / 4) * (parent.height / 2 - 3)
-          color: Color.accent
+          color: root.paletteAccent
           opacity: (index + 1) / 8
         }
       }
@@ -900,9 +913,9 @@ PanelWindow {
     height: 34
     radius: 10
     color: {
-      if (!buttonSelf.enabled || buttonSelf.dimmed) return Util.alpha(Color.foreground, 0.05)
-      if (buttonSelf.accent) return buttonMouse.containsMouse ? Util.alpha(Color.accent, 0.85) : Util.alpha(Color.accent, 0.7)
-      return buttonMouse.containsMouse ? Util.alpha(Color.foreground, 0.16) : Util.alpha(Color.foreground, 0.08)
+      if (!buttonSelf.enabled || buttonSelf.dimmed) return Util.alpha(root.paletteForeground, 0.05)
+      if (buttonSelf.accent) return buttonMouse.containsMouse ? Util.alpha(root.paletteAccent, 0.85) : Util.alpha(root.paletteAccent, 0.7)
+      return buttonMouse.containsMouse ? Util.alpha(root.paletteForeground, 0.16) : Util.alpha(root.paletteForeground, 0.08)
     }
     signal clicked()
 
@@ -910,7 +923,7 @@ PanelWindow {
         textFormat: Text.PlainText
       anchors.centerIn: parent
       text: buttonSelf.text
-      color: buttonSelf.accent ? Color.background : Color.foreground
+      color: buttonSelf.accent ? root.paletteBackground : root.paletteForeground
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall
     }
