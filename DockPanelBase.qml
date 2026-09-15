@@ -63,6 +63,17 @@ Item {
   // Using a binding avoids the fragile manual hover tracking where a MouseArea behind delegates
   // didn't receive hover when an icon was on top, causing hide to arm while still over dock.
   property bool dockHovered: hoveredItemId !== "" || (mouseArea && mouseArea.containsMouse)
+  property bool screenshotMode: false
+  property var screenshotItems: [
+    { id: "windows", name: "Window" },
+    { id: "fullscreen", name: "Full Screen" },
+    { id: "region", name: "Region" },
+    { id: "back", name: "Back" }
+  ]
+  property var screenshotLayout: DockModel.computeLayout(DockModel.buildFlow(["windows", "fullscreen", "region", "back"], [], "", -1), -1, root.layoutOptions)
+  readonly property real displayedWidth: screenshotMode ? screenshotLayout.totalWidth : layoutWidth
+  onScreenshotModeChanged: { root.clearHover(); root.tooltipItem = null; root.applyLayout() }
+  property bool screenshotActive: false
   property bool menuOpen: false
   property bool pickerOpen: false
   property bool enabled: true
@@ -119,7 +130,7 @@ Item {
   property int peekPx: 0
   // Hide is suppressed while any transient UI is active so the dock does not
   // vanish under a menu, preview, picker or drag.
-  property bool hideSuppressed: root.menuOpen || root.pickerOpen || root.previewVisible || root.floatingId !== "" || !!(root.altTab && root.altTab.active)
+  property bool hideSuppressed: root.screenshotMode || root.menuOpen || root.pickerOpen || root.previewVisible || root.floatingId !== "" || !!(root.altTab && root.altTab.active)
   property bool edgeHovered: false
   // Combined engagement — dockHovered OR edgeHovered. While true, hide is
   // suppressed and must not be scheduled. Extracted to avoid the fragile 5px
@@ -135,8 +146,8 @@ Item {
   // stale anchor competing with a new one, which otherwise pinned the dock to
   // top-center and inflated the edge hot-zone to full screen.
   property real hideShift: (root.autoHide && root.autoHidden) ? root.bottomMargin + root.dockHeight - root.peekPx : 0
-  property real surfaceWidth: root.vertical ? root.dockHeight : root.layoutWidth
-  property real surfaceHeight: root.vertical ? root.layoutWidth : root.dockHeight
+  property real surfaceWidth: root.vertical ? root.dockHeight : root.displayedWidth
+  property real surfaceHeight: root.vertical ? root.displayedWidth : root.dockHeight
   property real surfaceX: {
     if (root.dockSide === "left") return root.bottomMargin - root.hideShift
     if (root.dockSide === "right") return dockWindow.width - root.surfaceWidth - root.bottomMargin + root.hideShift
@@ -211,6 +222,7 @@ Item {
     function toggle() { root.enabled = !root.enabled }
     function show() { root.enabled = true }
     function hide() { root.enabled = false }
+    function screenshot(): void { root.openScreenshotMenu() }
     function altTabNext() { root.altTabNext() }
     function altTabPrev() { root.altTabPrev() }
     function altTabCancel() { root.altTabCancel() }
@@ -525,8 +537,9 @@ Item {
     // dockRow is rotated -90° for left/right docks, so hoveredMouseX (the
     // window coordinate along the dock) must be fed into the matching slot
     // for mapFromItem to resolve it to the row's x axis.
-    if (root.vertical) return dockRow.mapFromItem(null, 0, root.hoveredMouseX).x
-    return dockRow.mapFromItem(null, root.hoveredMouseX, 0).x
+    var row = root.screenshotMode ? screenshotRow : dockRow
+    if (root.vertical) return row.mapFromItem(null, 0, root.hoveredMouseX).x
+    return row.mapFromItem(null, root.hoveredMouseX, 0).x
   }
 
   // Leaving the dock over a gap or the surface padding never triggers a
@@ -621,6 +634,11 @@ Item {
 
   function applyLayout() {
     var cursorX = root.cursorXInRow()
+    if (root.screenshotMode) {
+      root.screenshotLayout = DockModel.computeLayout(
+        DockModel.buildFlow(["windows", "fullscreen", "region", "back"], [], "", -1), cursorX, root.layoutOptions)
+      return
+    }
     var baseFlow = DockModel.buildFlow(root.dockOrder, [], root.floatingId, -1)
     if (root.floatingId && cursorX >= 0)
       root.tempDrag.index = DockModel.insertionIndexFor(cursorX, baseFlow, root.layoutOptions)
@@ -874,6 +892,34 @@ Item {
     root.refreshItems()
   }
 
+  function openScreenshotMenu() {
+    if (root.screenshotActive || root.floatingId) return
+    root.clearHover()
+    root.hidePreview()
+    iconPicker.close()
+    root.altTabCancel()
+    dockMenu.opened = false
+    root.screenshotMode = true
+    root.enabled = true
+    root.autoHidden = false
+  }
+
+  Timer {
+    id: screenshotDelay
+    // Let the compositor remove the dock and chooser before freezing the screen.
+    interval: 200
+    property string mode: "region"
+    onTriggered: {
+      screenshotProcess.command = ["omarchy", "capture", "screenshot", mode]
+      screenshotProcess.running = true
+    }
+  }
+
+  Process {
+    id: screenshotProcess
+    onRunningChanged: if (!running) root.screenshotActive = false
+  }
+
   function openMenu(item, position) {
     root.tooltipItem = null
     root.hidePreview()
@@ -884,6 +930,17 @@ Item {
   }
 
   function menuAction(action, item) {
+    if (["screenshot:windows", "screenshot:fullscreen", "screenshot:region"].indexOf(action) !== -1) {
+      if (root.screenshotActive) return
+      dockMenu.opened = false
+      root.clearHover()
+      root.hidePreview()
+      root.screenshotMode = false
+      root.screenshotActive = true
+      screenshotDelay.mode = action.slice(11)
+      screenshotDelay.restart()
+      return
+    }
     if (action === "toggleAutoHide") {
       root.autoHide = !root.autoHide
       root.saveSettings()
@@ -1637,7 +1694,7 @@ Item {
 
   PanelWindow {
     id: dockWindow
-    visible: !root.conflictDetected && root.enabled && !root.remapping && Quickshell.screens.length > 0
+    visible: !root.screenshotActive && !root.conflictDetected && root.enabled && !root.remapping && Quickshell.screens.length > 0
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
@@ -1707,7 +1764,59 @@ Item {
       Behavior on opacity { NumberAnimation { duration: 180 } }
 
       Item {
+        id: screenshotRow
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: 6
+        visible: root.screenshotMode
+        width: root.screenshotLayout.totalWidth - 2 * root.sidePadding
+        height: 70
+        rotation: root.vertical ? -90 : 0
+        Repeater {
+          model: root.screenshotItems
+          delegate: Item {
+            required property var modelData
+            property var placement: root.screenshotLayout.placements[modelData.id]
+            width: root.slotWidth * captureItem.scale
+            height: 70
+            x: placement ? placement.x : 0
+            rotation: root.vertical ? 90 : 0
+            Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            DockItem {
+              id: captureItem
+              anchors.centerIn: parent
+              itemData: modelData
+              iconSourceOverride: Qt.resolvedUrl("assets/screenshot-" + modelData.id + ".svg")
+              iconSize: root.iconSize
+              dockSide: root.dockSide
+              accentColor: root.dockAccent
+              foregroundColor: root.dockForeground
+              dragEnabled: false
+              targetScale: parent.placement ? parent.placement.scale : 1
+              targetLift: 0
+              onItemLeftClicked: {
+                if (modelData.id === "back") root.screenshotMode = false
+                else root.menuAction("screenshot:" + modelData.id, null)
+              }
+              onTooltipRequested: function(item, shown, center) {
+                root.tooltipCenterX = root.vertical ? center.y : center.x
+                root.showTooltip(item, shown)
+              }
+              onHoverPointerChanged: function(item, inside, position) {
+                if (inside) {
+                  root.hoveredItemId = item.id
+                  root.hoveredMouseX = root.vertical ? position.y : position.x
+                  root.tooltipCenterX = root.vertical ? position.y : position.x
+                } else if (root.hoveredItemId === item.id) root.hoveredItemId = ""
+                root.applyLayout()
+              }
+            }
+          }
+        }
+      }
+
+      Item {
         id: dockRow
+        visible: !root.screenshotMode
         anchors.centerIn: parent
         anchors.verticalCenterOffset: 6
         width: root.layoutWidth - 2 * root.sidePadding
@@ -2061,7 +2170,7 @@ Item {
   // hidden the spacer unmaps and tiled windows reclaim the space.
   PanelWindow {
     id: dockSpacerWindow
-    visible: !root.conflictDetected && root.enabled && !root.autoHide && !root.remapping && Quickshell.screens.length > 0
+    visible: !root.screenshotActive && !root.conflictDetected && root.enabled && !root.autoHide && !root.remapping && Quickshell.screens.length > 0
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
@@ -2090,7 +2199,7 @@ Item {
   // the dock, and edgeHovered participates in hide suppression like dockHovered.
   PanelWindow {
     id: edgeHotZone
-    visible: !root.conflictDetected && root.enabled && root.autoHide && root.dockReady && !root.remapping && Quickshell.screens.length > 0
+    visible: !root.screenshotActive && !root.conflictDetected && root.enabled && root.autoHide && root.dockReady && !root.remapping && Quickshell.screens.length > 0
     screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore

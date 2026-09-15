@@ -18,6 +18,7 @@ Item {
   property real targetLift: 0
   property real targetOpacity: 1
   property bool animationEnabled: true
+  property bool dragEnabled: true
   property bool isDragging: false
   property bool leftPressed: false
   property bool tooltipVisible: false
@@ -180,7 +181,7 @@ Item {
         root.hoverPointerChanged(root.itemData, true, root.mapToItem(null, mouseX, mouseY))
         return
       }
-      if (root.leftPressed && !root.isDragging && Math.hypot(mouseX - root.pressPosition.x, mouseY - root.pressPosition.y) >= 6)
+      if (root.dragEnabled && root.leftPressed && !root.isDragging && Math.hypot(mouseX - root.pressPosition.x, mouseY - root.pressPosition.y) >= 6)
         root.isDragging = true
       if (root.leftPressed && root.isDragging)
         root.dragMoved(root.itemData, Qt.point(mouseX, mouseY))

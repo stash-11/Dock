@@ -1,5 +1,6 @@
 import "."
 import QtQuick
+import QtQuick.Controls.Basic as Controls
 import QtQuick.Dialogs
 import Quickshell
 import Quickshell.Io
@@ -34,6 +35,7 @@ PanelWindow {
 
   property var results: []
   property var appRows: []
+  readonly property bool searchLoading: searchProcess.running || (searchTimer.running && String(searchField.text).trim().length > 0)
   property bool busy: false
   property string statusText: ""
   // Bumped after every successful apply/clear and when the icon mapping is
@@ -82,6 +84,7 @@ PanelWindow {
   }
 
   function close() {
+    searchTimer.stop()
     root.open = false
     root.fromManage = false
     root.fromDockMenu = false
@@ -110,6 +113,11 @@ PanelWindow {
   }
 
   function searchingNow(query) {
+    if (!String(query).trim()) {
+      root.results = []
+      root.statusText = ""
+      return
+    }
     if (!root.helperPath) {
       root.statusText = "Icon helper not found — reinstall the plugin"
       return
@@ -590,7 +598,7 @@ PanelWindow {
 
           GridView {
             id: resultGrid
-            visible: root.mode === "picker"
+            visible: root.mode === "picker" && !root.searchLoading
             anchors.fill: parent
             model: root.results
             cellWidth: root.gridCell
@@ -617,7 +625,13 @@ PanelWindow {
                   radius: 16
                   color: Util.alpha(Color.foreground, 0.06)
 
+                  LoadingSpinner {
+                    anchors.centerIn: parent
+                    width: 28; height: 28
+                    running: root.open && resultGrid.visible && resultImage.status === Image.Loading
+                  }
                   Image {
+                    id: resultImage
                     anchors.centerIn: parent
                     width: 68
                     height: 68
@@ -657,6 +671,23 @@ PanelWindow {
               visible: root.results.length === 0 && root.statusText === ""
               text: "Type to search macOSicons"
               color: Qt.darker(Color.foreground, 1.5)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+            }
+          }
+
+          Column {
+            anchors.centerIn: parent
+            spacing: 12
+            visible: root.mode === "picker" && root.searchLoading
+            LoadingSpinner {
+              anchors.horizontalCenter: parent.horizontalCenter
+              width: 36; height: 36
+              running: root.open && parent.visible
+            }
+            Text {
+              text: "Loading icons…"
+              color: Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.body
             }
@@ -826,13 +857,36 @@ PanelWindow {
           Text {
         textFormat: Text.PlainText
             width: parent.width
-            text: root.statusText
+            text: root.mode === "picker" && root.searchLoading ? "Loading icons…" : root.statusText
             elide: Text.ElideRight
             color: Qt.darker(Color.foreground, 1.5)
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
           }
         }
+      }
+    }
+  }
+
+  component LoadingSpinner: Controls.BusyIndicator {
+    id: spinner
+    visible: running
+    contentItem: Item {
+      Repeater {
+        model: 8
+        Rectangle {
+          required property int index
+          width: 4; height: 4; radius: 2
+          x: parent.width / 2 - width / 2 + Math.cos(index * Math.PI / 4) * (parent.width / 2 - 3)
+          y: parent.height / 2 - height / 2 + Math.sin(index * Math.PI / 4) * (parent.height / 2 - 3)
+          color: Color.accent
+          opacity: (index + 1) / 8
+        }
+      }
+      RotationAnimator on rotation {
+        from: 0; to: 360; duration: 900
+        loops: Animation.Infinite
+        running: spinner.running && spinner.visible
       }
     }
   }

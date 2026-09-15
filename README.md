@@ -39,6 +39,20 @@ The app switcher uses `Alt+Tab` and `Alt+Shift+Tab`; `Alt+Grave` and
 `toggleAutoHide`, `setAutoHide`, `getAutoHide`, `altTabNext`, `altTabPrev`, and
 `altTabCancel`.
 
+Replace the app icons with screenshot controls inside the dock:
+
+```bash
+omarchy-shell io.github.stash-11.dock screenshot
+```
+
+For an existing installation named `macos.dock`, use
+`omarchy-shell macos.dock screenshot` after updating its installed files.
+
+Choose **Window**, **Full Screen**, or **Region**. The dock hides before
+capture starts and returns to apps afterward. **Back** restores the apps without capturing. Repeating the IPC command
+keeps the screenshot controls open. Omarchy handles selection, saving, and
+clipboard copying.
+
 ## Requirements and dependencies
 
 The plugin requires Omarchy Quickshell with the `qs.Commons` and `qs.Ui`
