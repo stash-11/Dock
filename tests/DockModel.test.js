@@ -405,3 +405,14 @@ test("transparency persists and validates old or invalid settings", () => {
     assert.equal(result.appearanceMode, "default")
   }
 })
+
+test("screenshot output persists and old or invalid settings retain file plus clipboard", () => {
+  for (const text of ['{}', '{"screenshotOutput":"invalid"}', '{"screenshotOutput":null}'])
+    assert.equal(model.parseSettings(text).screenshotOutput, "slurp")
+  for (const screenshotOutput of ["slurp", "copy", "save"]) {
+    const restored = model.parseSettings(model.serializeSettings({ screenshotOutput, autoHide: false, magnification: 1.65 }))
+    assert.equal(restored.screenshotOutput, screenshotOutput)
+    assert.equal(restored.autoHide, false)
+    assert.equal(restored.magnification, 1.65)
+  }
+})

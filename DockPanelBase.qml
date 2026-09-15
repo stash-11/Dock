@@ -73,6 +73,8 @@ Item {
   property var screenshotLayout: DockModel.computeLayout(DockModel.buildFlow(["windows", "fullscreen", "region", "back"], [], "", -1), -1, root.layoutOptions)
   readonly property real displayedWidth: screenshotMode ? screenshotLayout.totalWidth : layoutWidth
   onScreenshotModeChanged: { root.clearHover(); root.tooltipItem = null; root.applyLayout() }
+  property string screenshotOutput: "slurp"
+  onScreenshotOutputChanged: if (root.settingsLoaded && !root.applyingSettings) appearanceSave.restart()
   property bool screenshotActive: false
   property bool menuOpen: false
   property bool pickerOpen: false
@@ -223,6 +225,14 @@ Item {
     function show() { root.enabled = true }
     function hide() { root.enabled = false }
     function screenshot(): void { root.openScreenshotMenu() }
+    function settings(): void {
+      root.clearHover()
+      root.hidePreview()
+      iconPicker.close()
+      dockMenu.settingsPage = true
+      dockMenu.opened = true
+      root.menuOpen = true
+    }
     function altTabNext() { root.altTabNext() }
     function altTabPrev() { root.altTabPrev() }
     function altTabCancel() { root.altTabCancel() }
@@ -260,7 +270,7 @@ Item {
 
   function saveSettings() {
     if (root.applyingSettings) return
-    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness, appearanceMode: root.appearanceMode, transparency: root.transparency })
+    var content = DockModel.serializeSettings({ autoHide: root.autoHide, dockSide: root.dockSide, magnification: root.magnification, roundness: root.roundness, appearanceMode: root.appearanceMode, transparency: root.transparency, screenshotOutput: root.screenshotOutput })
     root.settingsWriteUntil = Date.now() + 2000
     DockModel.markSettingsWritten(content)
     // settingsFile uses atomicWrites: setText writes to a sibling temp and
@@ -910,7 +920,7 @@ Item {
     interval: 200
     property string mode: "region"
     onTriggered: {
-      screenshotProcess.command = ["omarchy", "capture", "screenshot", mode]
+      screenshotProcess.command = ["omarchy", "capture", "screenshot", mode, root.screenshotOutput]
       screenshotProcess.running = true
     }
   }
@@ -930,6 +940,8 @@ Item {
   }
 
   function menuAction(action, item) {
+    if (action === "showScreenshotDock") { root.openScreenshotMenu(); return }
+    if (action === "openProject") { Qt.openUrlExternally("https://github.com/stash-11/Dock"); return }
     if (["screenshot:windows", "screenshot:fullscreen", "screenshot:region"].indexOf(action) !== -1) {
       if (root.screenshotActive) return
       dockMenu.opened = false
@@ -1517,6 +1529,7 @@ Item {
       root.roundness = parsed.roundness
       root.transparency = parsed.transparency
       root.appearanceMode = parsed.appearanceMode
+      root.screenshotOutput = parsed.screenshotOutput
       if (root.dockSide !== parsed.dockSide) root.dockSide = parsed.dockSide
       root.applyingSettings = false
       // If auto-hide is turned off, ensure the dock is fully revealed.
@@ -2029,6 +2042,9 @@ Item {
 
   DockMenu {
     id: dockMenu
+    version: root.manifest && root.manifest.version ? root.manifest.version : "1.0.0"
+    screenshotOutput: root.screenshotOutput
+    onScreenshotOutputAdjusted: function(value) { root.screenshotOutput = value }
     autoHideEnabled: root.autoHide
     magnification: root.magnification
     roundness: root.roundness

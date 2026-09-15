@@ -31,7 +31,11 @@ ln -sf ~/.config/omarchy/plugins/io.github.stash-11.dock/scripts/omarchy-dock-ic
 Right-click an app to open application actions. Select the settings icon for
 Dock Options and Appearance. The settings page includes Theme or Default
 colors, magnification, rounded corners, transparency, auto-hide, and dock
-placement.
+placement. Settings use a sidebar with Dock Behavior, Appearance, Screenshots,
+Shortcuts, and About pages. Screenshots can save to a file, the clipboard, or
+both; this preference also applies to the capture dock. Open settings directly
+with `omarchy-shell io.github.stash-11.dock settings` (use `macos.dock` for legacy
+installations).
 
 The app switcher uses `Alt+Tab` and `Alt+Shift+Tab`; `Alt+Grave` and
 `Alt+Shift+Grave` are also available. The dock exposes IPC commands through
