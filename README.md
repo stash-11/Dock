@@ -9,6 +9,24 @@ The dock surface can follow the active Omarchy theme or use a charcoal default
 style. Magnification, corner rounding, transparency, auto-hide, and placement
 are adjustable from the dock settings and are saved under `~/.config/omarchy/`.
 
+## Screenshots
+
+### Appearance settings
+
+![My Dock appearance settings](screenshots/appearance.png)
+
+### Icon picker
+
+![Icon picker for a pinned application](screenshots/icon-picker.png)
+
+### Application actions
+
+![Application actions for a pinned app](screenshots/application-actions.png)
+
+### Desktop and dock
+
+![My Dock on the Omarchy desktop](screenshots/desktop.png)
+
 ## Install
 
 Review the source before enabling it. Omarchy plugins run as unsandboxed code
