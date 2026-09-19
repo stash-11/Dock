@@ -127,6 +127,12 @@ delete the saved dock state.
 omarchy plugin validate .
 ```
 
+## Special thanks
+
+Special thanks to [Ifubar Aboye](https://github.com/ifubaraboye) for the
+original [Omarchy Dock](https://github.com/ifubaraboye/omarchy-dock) that this
+project builds on.
+
 ## License and attribution
 
 This repository is MIT licensed. It is a modified, separately maintained
