@@ -72,6 +72,67 @@ print(json.dumps(out, separators=(",", ":")))
 PY
 }
 
+# Curl never writes remote bodies to disk directly. Read one extra byte to
+# distinguish an exact-limit response from overflow, and reap its process group.
+bounded_download() {
+  local destination="$1" limit="$2" deadline="$3" url="$4"
+  python3 - "$destination" "$limit" "$deadline" "$curl_cmd" "$url" <<'PYTHON'
+import os, selectors, signal, subprocess, sys, time
+
+path, limit, timeout, curl, url = sys.argv[1:]
+cap = int(limit.removesuffix("M")) * 1024 * 1024
+seconds = int(timeout)
+producer = None
+complete = False
+try:
+    expires = time.monotonic() + seconds
+    producer = subprocess.Popen(
+        [curl, "-fL", "--retry", "2", "--connect-timeout", "10",
+         "--max-time", timeout, "--proto", "=https", "--proto-redir", "=https",
+         "--max-filesize", limit, url],
+        stdout=subprocess.PIPE, start_new_session=True,
+    )
+    received = 0
+    with open(path, "wb") as output, selectors.DefaultSelector() as selector:
+        selector.register(producer.stdout, selectors.EVENT_READ)
+        while True:
+            remaining = expires - time.monotonic()
+            if remaining <= 0 or not selector.select(remaining):
+                raise RuntimeError("download deadline exceeded")
+            chunk = os.read(producer.stdout.fileno(), min(65536, cap + 1 - received))
+            if not chunk:
+                break
+            received += len(chunk)
+            if received > cap:
+                raise RuntimeError(f"download exceeds {limit} size limit")
+            output.write(chunk)
+        remaining = expires - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError("download deadline exceeded")
+        if producer.wait(timeout=remaining) != 0:
+            raise RuntimeError("download failed")
+    complete = True
+except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+    print(f"icon download: {error}", file=sys.stderr)
+finally:
+    if producer is not None:
+        # Also kill descendants that may still hold the pipe after curl exits.
+        try:
+            os.killpg(producer.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        producer.wait()
+        producer.stdout.close()
+    if not complete:
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
+if not complete:
+    sys.exit(1)
+PYTHON
+}
+
 extract_image_url() {
   local html_file="$1" source="$2"
   python3 - "$html_file" "$source" <<'PY'
@@ -161,13 +222,13 @@ except Exception:
 PY
 }
 
-set_icon() {
-  local app_id input source image_url temporary filename
+set_icon() (
+  local app_id input source image_url="" temporary filename page_file="" rounded=""
   app_id="$(canonical_id "$1")"
   input="$2"
   mkdir -p "$icon_dir"
   temporary="$(mktemp "$icon_dir/.${app_id}.XXXXXX")"
-  trap 'rm -f "$temporary"' RETURN
+  trap 'rm -f -- "$temporary" "$page_file" "$rounded"' EXIT
 
   if [[ "$input" == "--file" ]]; then
     [[ -f "$3" ]] || die "image file not found: $3"
@@ -189,18 +250,12 @@ set_icon() {
         source="https://macosicons.com/icon/$input"
       fi
       if [[ -z "$image_url" ]]; then
-        local page_file
         page_file="$(mktemp)"
-        trap 'rm -f "$temporary" "$page_file"' RETURN
-        "$curl_cmd" -fL --retry 2 --connect-timeout 10 --max-time 30 \
-          --proto '=https' --proto-redir '=https' --max-filesize "$max_page_size" \
-          -o "$page_file" "$source"
+        bounded_download "$page_file" "$max_page_size" 30 "$source"
         image_url="$(extract_image_url "$page_file" "$input")"
       fi
     fi
-    "$curl_cmd" -fL --retry 2 --connect-timeout 10 --max-time 60 \
-      --proto '=https' --proto-redir '=https' --max-filesize "$max_download_size" \
-      -o "$temporary" "$image_url"
+    bounded_download "$temporary" "$max_download_size" 60 "$image_url"
   fi
 
   # Validate the downloaded asset as an image. The downloaded bytes are never
@@ -212,16 +267,13 @@ set_icon() {
     *) die "downloaded file is not a valid PNG or WebP image" ;;
   esac
 
-  local rounded
   rounded="$(mktemp "$icon_dir/.${app_id}.rounded.XXXXXX.png")"
-  trap 'rm -f "$temporary" "$rounded"' RETURN
   round_icon "$temporary" "$rounded"
   filename="$app_id.png"
   mv -f -- "$rounded" "$icon_dir/$filename"
   write_mapping "$app_id" "$filename" "$source" "$image_url"
-  trap - RETURN
   printf 'Set custom icon for %s\n' "$app_id"
-}
+)
 
 clear_icon() {
   local app_id="$1" filename
