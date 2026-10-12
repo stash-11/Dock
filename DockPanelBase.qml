@@ -15,6 +15,9 @@ Item {
   property var shell: null
   property var pluginRegistry: null
   property var manifest: null
+  property var targetScreen: null
+  readonly property var activeScreen: targetScreen !== null ? targetScreen : (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+  property bool isPrimary: true
   property string home: Quickshell.env("HOME")
   property string iconDir: home + "/.config/omarchy/icons"
   property string iconMapPath: home + "/.config/omarchy/dock-icons.json"
@@ -271,52 +274,57 @@ Item {
   // carries the intent for delegates that do not exist yet).
   property var bouncingIds: []
 
-  IpcHandler {
-    target: "io.github.stash-11.dock"
-    function toggle() { root.enabled = !root.enabled }
-    function show() { root.enabled = true }
-    function hide() { root.enabled = false }
-    function screenshot(): void { root.openScreenshotMenu() }
-    function settings(): void {
-      root.clearHover()
-      root.hidePreview()
-      iconPicker.close()
-      dockMenu.settingsPage = true
-      dockMenu.opened = true
-      root.menuOpen = true
-    }
-    function altTabNext() { root.altTabNext() }
-    function altTabPrev() { root.altTabPrev() }
-    function altTabCancel() { root.altTabCancel() }
-    function toggleAutoHide(): void { root.autoHide = !root.autoHide; root.saveSettings() }
-    function setAutoHide(value: string): void {
-      var v = String(value).toLowerCase()
-      root.autoHide = (v === "true" || v === "1" || v === "on")
-      root.saveSettings()
-    }
-    function getAutoHide(): bool { return root.autoHide }
-    function remap(): string {
-      root.triggerRemap(true)
-      return "ok"
-    }
-    function setDockSide(value: string): void {
-      var side = DockModel.normalizeSide(value)
-      if (side === root.dockSide) return
-      root.dockSide = side
-    }
-    function getDockSide(): string { return root.dockSide }
-    function cycleDockSide(): string {
-      var order = ["bottom", "left", "right"]
-      var idx = order.indexOf(root.dockSide)
-      root.dockSide = order[(idx + 1) % order.length]
-      return root.dockSide
-    }
-    // DEBUG (temporary): trigger a bounce on demand without launching.
-    function bounceDebug(id: string): void {
-      root.triggerLaunchBounce(id)
-    }
-    function bounceState(): string {
-      return JSON.stringify({ bouncing: root.bouncingIds })
+  Loader {
+    active: root.isPrimary
+    sourceComponent: Component {
+      IpcHandler {
+        target: "io.github.stash-11.dock"
+        function toggle() { root.enabled = !root.enabled }
+        function show() { root.enabled = true }
+        function hide() { root.enabled = false }
+        function screenshot(): void { root.openScreenshotMenu() }
+        function settings(): void {
+          root.clearHover()
+          root.hidePreview()
+          iconPicker.close()
+          dockMenu.settingsPage = true
+          dockMenu.opened = true
+          root.menuOpen = true
+        }
+        function altTabNext() { root.altTabNext() }
+        function altTabPrev() { root.altTabPrev() }
+        function altTabCancel() { root.altTabCancel() }
+        function toggleAutoHide(): void { root.autoHide = !root.autoHide; root.saveSettings() }
+        function setAutoHide(value: string): void {
+          var v = String(value).toLowerCase()
+          root.autoHide = (v === "true" || v === "1" || v === "on")
+          root.saveSettings()
+        }
+        function getAutoHide(): bool { return root.autoHide }
+        function remap(): string {
+          root.triggerRemap(true)
+          return "ok"
+        }
+        function setDockSide(value: string): void {
+          var side = DockModel.normalizeSide(value)
+          if (side === root.dockSide) return
+          root.dockSide = side
+        }
+        function getDockSide(): string { return root.dockSide }
+        function cycleDockSide(): string {
+          var order = ["bottom", "left", "right"]
+          var idx = order.indexOf(root.dockSide)
+          root.dockSide = order[(idx + 1) % order.length]
+          return root.dockSide
+        }
+        // DEBUG (temporary): trigger a bounce on demand without launching.
+        function bounceDebug(id: string): void {
+          root.triggerLaunchBounce(id)
+        }
+        function bounceState(): string {
+          return JSON.stringify({ bouncing: root.bouncingIds })
+        }
+      }
     }
   }
 
@@ -1722,16 +1730,18 @@ Item {
     // The alt-tab HUD opens/closes on keypresses; Hyprland's default layer
     // fade would add a visible fade-in. Disable compositor animation for
     // both layer namespaces so the HUD pops in instantly.
-    if (!layerRuleProcess.running) layerRuleProcess.running = true
-    // Register the app-switcher keybinds so the HUD works out of the box.
-    // Config-file binds load before this runtime eval, so a user's own bind
-    // for the same combo takes precedence.
-    if (!altTabBindProcess.running) altTabBindProcess.running = true
-    // The shell applies the config-file binds (tiling.lua etc.) AFTER this
-    // Component.onCompleted eval, clobbering our ALT+TAB takeover. Re-apply
-    // the eval on a short retry window until the config binds have landed;
-    // the eval is idempotent (unbind then bind).
-    altTabBindRetry.start()
+    if (root.isPrimary) {
+      if (!layerRuleProcess.running) layerRuleProcess.running = true
+      // Register the app-switcher keybinds so the HUD works out of the box.
+      // Config-file binds load before this runtime eval, so a user's own bind
+      // for the same combo takes precedence.
+      if (!altTabBindProcess.running) altTabBindProcess.running = true
+      // The shell applies the config-file binds (tiling.lua etc.) AFTER this
+      // Component.onCompleted eval, clobbering our ALT+TAB takeover. Re-apply
+      // the eval on a short retry window until the config binds have landed;
+      // the eval is idempotent (unbind then bind).
+      altTabBindRetry.start()
+    }
     // startupReadyTimer marks the dock ready after app and pin data arrive,
     // then releases the one-time bottom entry and magnification.
   }
@@ -1765,7 +1775,7 @@ Item {
   PanelWindow {
     id: dockWindow
     visible: !root.screenshotActive && !root.conflictDetected && root.enabled && !root.remapping && Quickshell.screens.length > 0
-    screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    screen: root.activeScreen
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Top
@@ -2114,6 +2124,7 @@ Item {
 
   DockMenu {
     id: dockMenu
+    screen: dockWindow.screen
     onAppearanceResetRequested: {
       var defaults = DockModel.parseSettings("{}")
       root.dockScale = defaults.dockScale
@@ -2152,6 +2163,7 @@ Item {
 
   IconPickerPanel {
     id: iconPicker
+    screen: dockWindow.screen
     paletteBackground: root.dockBackground
     paletteForeground: root.dockForeground
     paletteAccent: root.dockAccent
@@ -2247,6 +2259,7 @@ Item {
   // far above the dock surface without touching the dock's layout or model.
   WindowPreviewPanel {
     id: previewPanel
+    screen: dockWindow.screen
     previewVisible: root.previewVisible && !root.floatingId && !root.menuOpen
     windowList: root.previewWindows
     centerX: root.previewCenterX
@@ -2280,7 +2293,7 @@ Item {
   PanelWindow {
     id: dockSpacerWindow
     visible: !root.screenshotActive && !root.conflictDetected && root.enabled && !root.autoHide && !root.remapping && Quickshell.screens.length > 0
-    screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    screen: root.activeScreen
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Background
@@ -2309,7 +2322,7 @@ Item {
   PanelWindow {
     id: edgeHotZone
     visible: !root.screenshotActive && !root.conflictDetected && root.enabled && root.autoHide && root.dockReady && !root.remapping && Quickshell.screens.length > 0
-    screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    screen: root.activeScreen
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Top
@@ -2355,7 +2368,7 @@ Item {
   PanelWindow {
     id: dragGhostWindow
     visible: root.ghostSource !== ""
-    screen: Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    screen: root.activeScreen
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
