@@ -295,4 +295,4 @@ For reference, the companion files with all defaults applied:
 qmllint DockPanel.qml DockItem.qml DockMenu.qml
 ```
 
-The dock is intended for a single primary output and uses the first configured Quickshell screen.
+The dock supports multiple monitors using Quickshell `Variants`, displaying on each connected output with independent surfaces and auto-hide triggers while sharing state and preferences.
